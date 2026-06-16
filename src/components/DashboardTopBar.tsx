@@ -1,27 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
-import { useSession, signOut } from "next-auth/react";
-
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useOrders } from "@/lib/orders";
 import { useInventory } from "@/lib/store";
+import { getAuthUser, logout } from "@/lib/auth";
+
+const DEMO_USER = { name: "Nanayaw", email: "admin@akanadehye.com", initial: "N" };
 
 export default function DashboardTopBar() {
-  const { data: session } = useSession();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Pending alert count: pending orders + low-stock items
   const { items: orderItems } = useOrders();
   const { items: invItems } = useInventory();
   const pendingOrders = orderItems.filter((o) => o.status === "pending").length;
   const lowStockCount = invItems.filter((i) => i.stock <= i.reorderAt).length;
   const alertCount = pendingOrders + lowStockCount;
 
-  const name = session?.user?.name ?? "Admin";
-  const email = session?.user?.email ?? "";
-  const initial = name.charAt(0).toUpperCase();
+  const [displayUser, setDisplayUser] = useState(DEMO_USER);
+  useEffect(() => {
+    const u = getAuthUser();
+    if (u) setDisplayUser({ name: u.name, email: u.email, initial: u.initial });
+  }, []);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -106,9 +109,9 @@ export default function DashboardTopBar() {
               className="inline-flex items-center gap-2 px-1.5 py-1.5 rounded-full hover:bg-white/10 transition"
             >
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[color:var(--brand-gold)] to-[color:var(--brand-clay)] text-white font-bold text-sm">
-                {initial}
+                {displayUser.initial}
               </span>
-              <span className="hidden md:inline text-sm font-medium">{name}</span>
+              <span className="hidden md:inline text-sm font-medium">{displayUser.name}</span>
               <svg
                 width="10"
                 height="10"
@@ -129,8 +132,8 @@ export default function DashboardTopBar() {
             {menuOpen && (
               <div className="absolute right-0 mt-2 w-64 rounded-xl bg-white text-[color:var(--brand-navy)] shadow-xl overflow-hidden">
                 <div className="px-4 py-3 bg-[color:var(--brand-cream)] border-b border-[color:var(--border)]">
-                  <div className="font-semibold text-sm">{name}</div>
-                  <div className="text-xs text-[color:var(--muted)] truncate">{email}</div>
+                  <div className="font-semibold text-sm">{displayUser.name}</div>
+                  <div className="text-xs text-[color:var(--muted)] truncate">{displayUser.email}</div>
                 </div>
                 <Link
                   href="/admin"
@@ -150,7 +153,8 @@ export default function DashboardTopBar() {
                 <button
                   onClick={() => {
                     setMenuOpen(false);
-                    signOut({ callbackUrl: "/login" });
+                    logout();
+                    router.push("/login");
                   }}
                   className="block w-full text-left px-4 py-2.5 text-sm text-[color:var(--brand-clay)] hover:bg-[color:var(--brand-cream)] font-semibold"
                 >

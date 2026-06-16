@@ -3,20 +3,13 @@
 import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { signIn, getSession, useSession } from "next-auth/react";
+import { login, getAuthUser } from "@/lib/auth";
+import { signIn } from "next-auth/react";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawCallback = searchParams.get("callbackUrl");
-  const { status } = useSession();
-
-  // Already logged in — redirect away from login page
-  useEffect(() => {
-    if (status === "authenticated") {
-      router.replace(rawCallback ?? "/admin");
-    }
-  }, [status, router, rawCallback]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,27 +17,34 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Already logged in as admin — redirect away
+  useEffect(() => {
+    if (getAuthUser()) {
+      router.replace(rawCallback ?? "/admin");
+    }
+  }, [router, rawCallback]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    // Try admin/staff credentials first (localStorage-based, no DB needed)
+    const adminUser = login(email, password);
+    if (adminUser) {
+      setLoading(false);
+      router.push(rawCallback ?? "/admin");
+      return;
+    }
 
+    // Fall back to NextAuth for customer accounts
+    const result = await signIn("credentials", { email, password, redirect: false });
     setLoading(false);
 
     if (result?.error) {
       setError("Invalid email or password.");
     } else {
-      // Read fresh session to determine role-based redirect
-      const session = await getSession();
-      const role = (session?.user as { role?: string } | undefined)?.role;
-      const dest = rawCallback ?? (role === "customer" ? "/account" : "/admin");
-      router.push(dest);
+      router.push("/account");
       router.refresh();
     }
   }
@@ -66,6 +66,7 @@ function LoginForm() {
         </span>
         <input
           type="email"
+          name="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -82,6 +83,7 @@ function LoginForm() {
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
+            name="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -125,7 +127,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[color:var(--brand-cream)]">
       <div className="w-full max-w-sm">
-        {/* Brand */}
         <div className="text-center mb-8">
           <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-[color:var(--brand-navy)] font-bold text-2xl mb-4 shadow-lg text-[color:var(--brand-gold)]">
             A
