@@ -9,7 +9,11 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function makeClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL ?? "";
-  const adapter = new PrismaPg({ connectionString });
+  const isRemote = connectionString.startsWith("postgresql://") || connectionString.startsWith("postgres://");
+  const adapter = new PrismaPg({
+    connectionString,
+    ...(isRemote ? { ssl: { rejectUnauthorized: false } } : {}),
+  });
   return new PrismaClient({ adapter });
 }
 
