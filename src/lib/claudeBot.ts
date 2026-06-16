@@ -31,6 +31,15 @@ const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-4-8";
 const MAX_HISTORY = 12; // last N turns sent to Claude — caps token spend
 const MAX_TOKENS = 4096; // bot replies are short; well under timeout limits
 
+// Adaptive thinking + the `effort` parameter are only supported on Opus 4.5+,
+// Sonnet 4.6, and Fable 5 — they 400 on Haiku 4.5 / Sonnet 4.5. Sending them to
+// an unsupported model makes every call throw and silently fall back to the
+// keyword brain, so gate them on the configured model.
+const SUPPORTS_THINKING = /(opus-4-[5-9])|(sonnet-4-[6-9])|(fable-5)/.test(MODEL);
+const THINKING_PARAMS = SUPPORTS_THINKING
+  ? { thinking: { type: "adaptive" as const }, output_config: { effort: "medium" as const } }
+  : {};
+
 // ---------- Tools ----------
 
 const listCategoriesTool = betaZodTool({
@@ -255,8 +264,7 @@ export async function replyWithClaude(
     const finalMessage = await client.beta.messages.toolRunner({
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      thinking: { type: "adaptive" },
-      output_config: { effort: "medium" },
+      ...THINKING_PARAMS,
       system: buildSystemPrompt(persona),
       tools,
       messages,
