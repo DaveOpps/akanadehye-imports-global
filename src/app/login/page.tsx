@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { signIn, getSession } from "next-auth/react";
+import { signIn, getSession, useSession } from "next-auth/react";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawCallback = searchParams.get("callbackUrl");
+  const { status } = useSession();
+
+  // Already logged in — redirect away from login page
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace(rawCallback ?? "/admin");
+    }
+  }, [status, router, rawCallback]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
