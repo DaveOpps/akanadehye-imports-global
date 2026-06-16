@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useOrders } from "@/lib/orders";
 import { useInventory } from "@/lib/store";
 import { getAuthUser, logout } from "@/lib/auth";
@@ -10,7 +9,6 @@ import { getAuthUser, logout } from "@/lib/auth";
 const DEMO_USER = { name: "Nanayaw", email: "admin@akanadehye.com", initial: "N" };
 
 export default function DashboardTopBar() {
-  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -154,7 +152,7 @@ export default function DashboardTopBar() {
                   onClick={() => {
                     setMenuOpen(false);
                     logout();
-                    router.push("/login");
+                    window.location.href = "/login";
                   }}
                   className="block w-full text-left px-4 py-2.5 text-sm text-[color:var(--brand-clay)] hover:bg-[color:var(--brand-cream)] font-semibold"
                 >

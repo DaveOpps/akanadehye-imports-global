@@ -32,8 +32,9 @@ function LoginForm() {
     // Try admin/staff credentials first (localStorage-based, no DB needed)
     const adminUser = login(email, password);
     if (adminUser) {
-      setLoading(false);
-      router.push(rawCallback ?? "/admin");
+      // Hard navigation guarantees localStorage is committed and the admin
+      // layout mounts fresh — no SPA race where AuthGuard reads stale state.
+      window.location.href = rawCallback ?? "/admin";
       return;
     }
 
