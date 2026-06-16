@@ -1,0 +1,196 @@
+// Akanadehye Prisma schema — SQLite for local dev.
+// Swap `provider = "postgresql"` and update DATABASE_URL when deploying.
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- User / Auth ----------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  role         String   @default("admin")  // "admin" | "super_admin"
+  createdAt    DateTime @default(now())
+
+  payments      Payment[]
+  inventory     InventoryItem[]
+  invoices      Invoice[]
+  sourcing      SourcingOrder[]
+  financing     FinancingApplication[]
+  orders        Order[]
+}
+
+// ---------- Business entities ----------
+
+model Payment {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  customer  String
+  amount    Float
+  currency  String   @default("GHS")          // "GHS" | "USD"
+  method    String                              // "mobile-money" | "visa" | "mastercard" | "apple-pay"
+  reference String
+  status    String   @default("succeeded")    // "succeeded" | "pending" | "failed"
+  note      String?
+
+  @@index([userId, createdAt])
+}
+
+model InventoryItem {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  sku         String
+  name        String
+  category    String
+  price       Float
+  salePrice   Float?
+  stock       Int
+  reorderAt   Int    @default(5)
+  description String?
+  images      String?  // JSON-encoded String[]
+  tags        String?  // JSON-encoded String[]
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, sku])
+  @@index([userId])
+}
+
+model Invoice {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  number        String
+  customerName  String
+  customerEmail String?
+  dueDate       DateTime
+  lines         String   // JSON-encoded InvoiceLine[]
+  status        String   @default("draft")  // "draft" | "sent" | "paid" | "overdue"
+  notes         String?
+
+  @@unique([userId, number])
+  @@index([userId, createdAt])
+}
+
+model SourcingOrder {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  productLink String?
+  productName String
+  quantity    Int
+  estCostUsd  Float
+  fxRate      Float    @default(15.2)
+  status      String   @default("requested")  // "requested" | "quoted" | "purchased" | "shipping" | "arrived"
+  notes       String?
+
+  @@index([userId, createdAt])
+}
+
+model FinancingApplication {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  amount      Float
+  termMonths  Int
+  purpose     String
+  status      String   @default("submitted")  // "submitted" | "under-review" | "approved" | "declined"
+
+  @@index([userId, createdAt])
+}
+
+model Order {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  customerEmail    String?  // set when placed by a registered customer
+  number           String
+  status           String   @default("pending")
+  items            String   // JSON-encoded CartItem[]
+  subtotal         Float
+  shipping         Float    @default(0)
+  tax              Float    @default(0)
+  discount         Float    @default(0)
+  total            Float
+  address          String   // JSON-encoded ShippingAddress
+  shippingMethod   String
+  paymentMethod    String
+  paymentReference String?
+  couponCode       String?
+
+  @@index([userId, createdAt])
+  @@index([customerEmail, createdAt])
+}
+
+// ---------- Order notifications ----------
+
+model Notification {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  email       String   // recipient customer email
+  type        String   @default("order_status")
+  title       String
+  body        String
+  read        Boolean  @default(false)
+  orderId     String?
+  orderNumber String?
+
+  @@index([email, createdAt])
+}
+
+// ---------- Audit log ----------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  action     String   // "CREATE" | "UPDATE" | "STOCK_ADJUST" | "DELETE"
+  entity     String   // "InventoryItem"
+  entityId   String
+  entityName String?
+  entitySku  String?
+  before     String?  // JSON of changed fields before
+  after      String?  // JSON of changed fields after
+  actor      String?  // "admin" or user email
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// ---------- Customer accounts ----------
+
+model Customer {
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  name                 String
+  passwordHash         String
+  phone                String?
+  newsletterSubscribed Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+}
