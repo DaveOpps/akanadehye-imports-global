@@ -360,6 +360,7 @@ export const UMBRELLA_CATEGORIES: UmbrellaCategory[] = [
       {
         title: "Children",
         items: [
+          { label: "Children's Wear (Wholesale)", slug: "childrens-wear" },
           { label: "Boys", slug: "boys-clothing" },
           { label: "Girls", slug: "girls-clothing" },
           { label: "School Uniforms", slug: "school-uniforms" },

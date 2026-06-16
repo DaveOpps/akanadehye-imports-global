@@ -30,6 +30,7 @@ const SLUG_CATEGORIES: Record<string, string[]> = {
   "drinkware-tumblers":      ["Drinkware & Tumblers"],
   "bags-accessories":        ["Bags & Accessories"],
   "footwear":                ["Footwear"],
+  "childrens-wear":          ["Children's Wear"],
   "electronics-gadgets":     ["Electronics & Gadgets"],
   "smart-accessories":       ["Electronics & Gadgets"],
   "rgb-wireless":            ["Electronics & Gadgets"],

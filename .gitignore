@@ -46,3 +46,6 @@ next-env.d.ts
 *.db-wal
 
 /src/generated/prisma
+
+# one-off bulk product upload scripts (local only)
+/_upload/
