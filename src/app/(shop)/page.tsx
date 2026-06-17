@@ -116,11 +116,24 @@ export default async function Home() {
 
         {FEATURED_UMBRELLAS.map((umbrella, idx) => {
           const s = SCHEMES[idx % SCHEMES.length];
-          const firstGroup = umbrella.groups[0];
-          const shopSlug =
-            firstGroup.items.find((i) => i.label.toLowerCase().startsWith("all"))?.slug ??
-            firstGroup.items[firstGroup.items.length - 1]?.slug ??
-            umbrella.primarySlug;
+
+          // Only show sub-category tiles that actually have products in stock.
+          // Most taxonomy slugs (Entry Doors, Corn Shellers, etc.) have no
+          // inventory yet — showing them duplicated the same fallback image, so
+          // we hide them. Pull from every group in the umbrella, not just the first.
+          const tiles: { label: string; slug: string; thumb: string }[] = [];
+          const seen = new Set<string>();
+          for (const item of umbrella.groups.flatMap((g) => g.items)) {
+            const thumb = thumbMap[item.slug];
+            if (thumb && !seen.has(item.slug)) {
+              seen.add(item.slug);
+              tiles.push({ label: item.label, slug: item.slug, thumb });
+              if (tiles.length >= 6) break;
+            }
+          }
+
+          // Nothing in stock under this umbrella — skip the whole section.
+          if (tiles.length === 0) return null;
 
           return (
             <div key={umbrella.primarySlug}>
@@ -141,7 +154,7 @@ export default async function Home() {
                 <div className="relative z-10 flex items-center justify-between gap-4">
                   <div>
                     <p className="text-[11px] font-bold uppercase tracking-widest text-white/60 mb-1">
-                      {firstGroup.title}
+                      {umbrella.groups[0].title}
                     </p>
                     <h4 className="text-xl font-bold">{umbrella.label}</h4>
                     {umbrella.blurb && (
@@ -149,7 +162,7 @@ export default async function Home() {
                     )}
                   </div>
                   <Link
-                    href={`/products?category=${shopSlug}`}
+                    href={`/products?category=${tiles[0].slug}`}
                     className={`shrink-0 rounded-lg bg-white ${s.btn} px-5 py-2 text-sm font-bold transition hover:opacity-90`}
                   >
                     Shop Now
@@ -157,42 +170,27 @@ export default async function Home() {
                 </div>
               </div>
 
-              {/* Sub-category tiles */}
+              {/* Sub-category tiles — only ones with real stock */}
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-                {firstGroup.items.slice(0, 6).map((item) => {
-                  // Use exact slug match first, then fall back to the group's primary category
-                  const thumb =
-                    thumbMap[item.slug] ??
-                    thumbMap[firstGroup.items[0]?.slug ?? ""] ??
-                    null;
-                  return (
-                    <Link
-                      key={item.slug}
-                      href={`/products?category=${item.slug}`}
-                      className={`group flex flex-col gap-2 rounded-xl border ${s.tile} overflow-hidden text-center transition hover:shadow-md`}
-                    >
-                      {thumb ? (
-                        <div className="w-full aspect-square overflow-hidden bg-white">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={thumb}
-                            alt={item.label}
-                            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                      ) : (
-                        <div
-                          className={`flex w-full aspect-square items-center justify-center ${s.dot} text-lg font-bold text-white`}
-                        >
-                          {item.label.charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <span className="px-2 pb-2.5 text-xs font-semibold leading-snug text-[color:var(--brand-navy)] transition group-hover:text-[color:var(--brand-clay)]">
-                        {item.label}
-                      </span>
-                    </Link>
-                  );
-                })}
+                {tiles.map((item) => (
+                  <Link
+                    key={item.slug}
+                    href={`/products?category=${item.slug}`}
+                    className={`group flex flex-col gap-2 rounded-xl border ${s.tile} overflow-hidden text-center transition hover:shadow-md`}
+                  >
+                    <div className="w-full aspect-square overflow-hidden bg-white">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.thumb}
+                        alt={item.label}
+                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                    <span className="px-2 pb-2.5 text-xs font-semibold leading-snug text-[color:var(--brand-navy)] transition group-hover:text-[color:var(--brand-clay)]">
+                      {item.label}
+                    </span>
+                  </Link>
+                ))}
               </div>
             </div>
           );
