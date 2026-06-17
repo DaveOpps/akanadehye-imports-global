@@ -520,6 +520,15 @@ export default function InventoryPage() {
                           )}
                         </td>
                         <td className="px-3 py-3 text-right whitespace-nowrap">
+                          <a
+                            href={`/products/${i.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="View this product on the storefront"
+                            className="text-xs font-semibold text-[color:var(--muted)] hover:text-[color:var(--brand-navy)] hover:underline mr-3"
+                          >
+                            View
+                          </a>
                           <button
                             onClick={async () => {
                               setEditLoading(true);
