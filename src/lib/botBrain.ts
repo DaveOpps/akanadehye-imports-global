@@ -104,11 +104,11 @@ async function merchantInventoryReply(q: string): Promise<BotReply | null> {
     const items = await prisma.inventoryItem.findMany({
       where: {
         OR: [
-          { name: { contains: ql } },
-          { description: { contains: ql } },
-          { tags: { contains: ql } },
-          { category: { contains: ql } },
-          { sku: { contains: ql } },
+          { name: { contains: ql, mode: "insensitive" } },
+          { description: { contains: ql, mode: "insensitive" } },
+          { tags: { contains: ql, mode: "insensitive" } },
+          { category: { contains: ql, mode: "insensitive" } },
+          { sku: { contains: ql, mode: "insensitive" } },
         ],
       },
       orderBy: { updatedAt: "desc" },

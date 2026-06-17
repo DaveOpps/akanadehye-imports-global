@@ -114,11 +114,11 @@ export async function getProducts(
     ...(q
       ? {
           OR: [
-            { name: { contains: q } },
-            { description: { contains: q } },
-            { tags: { contains: q } },
-            { category: { contains: q } },
-            { sku: { contains: q } },
+            { name: { contains: q, mode: "insensitive" as const } },
+            { description: { contains: q, mode: "insensitive" as const } },
+            { tags: { contains: q, mode: "insensitive" as const } },
+            { category: { contains: q, mode: "insensitive" as const } },
+            { sku: { contains: q, mode: "insensitive" as const } },
           ],
         }
       : {}),

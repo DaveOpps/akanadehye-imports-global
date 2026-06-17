@@ -15,15 +15,15 @@ export async function GET(req: NextRequest) {
   const items = await prisma.inventoryItem.findMany({
     where: {
       ...(userId ? { userId } : {}),
-      ...(category ? { category: { contains: category } } : {}),
+      ...(category ? { category: { contains: category, mode: "insensitive" as const } } : {}),
       ...(q
         ? {
             OR: [
-              { name: { contains: q } },
-              { description: { contains: q } },
-              { tags: { contains: q } },
-              { category: { contains: q } },
-              { sku: { contains: q } },
+              { name: { contains: q, mode: "insensitive" as const } },
+              { description: { contains: q, mode: "insensitive" as const } },
+              { tags: { contains: q, mode: "insensitive" as const } },
+              { category: { contains: q, mode: "insensitive" as const } },
+              { sku: { contains: q, mode: "insensitive" as const } },
             ],
           }
         : {}),

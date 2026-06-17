@@ -125,13 +125,15 @@ const searchMerchantInventoryTool = betaZodTool({
       const q = query?.toLowerCase() ?? "";
       const items = await prisma.inventoryItem.findMany({
         where: {
-          ...(category ? { category: { contains: category } } : {}),
+          // PostgreSQL `contains` is case-sensitive by default — use insensitive
+          // mode so "corn sheller" matches a "Corn Sheller" product name.
+          ...(category ? { category: { contains: category, mode: "insensitive" } } : {}),
           ...(q ? {
             OR: [
-              { name: { contains: q } },
-              { description: { contains: q } },
-              { tags: { contains: q } },
-              { category: { contains: q } },
+              { name: { contains: q, mode: "insensitive" } },
+              { description: { contains: q, mode: "insensitive" } },
+              { tags: { contains: q, mode: "insensitive" } },
+              { category: { contains: q, mode: "insensitive" } },
             ],
           } : {}),
         },
