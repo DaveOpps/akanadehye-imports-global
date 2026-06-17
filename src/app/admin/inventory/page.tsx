@@ -80,7 +80,7 @@ export default function InventoryPage() {
   const [tab, setTab] = useState<Tab>("products");
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
   const [viewing, setViewing] = useState<InventoryItem | null>(null);
 
   // Toolbar state
@@ -246,6 +246,7 @@ export default function InventoryPage() {
             <button
               onClick={() => {
                 setEditing(null);
+                setFormLoading(false);
                 setShowForm(true);
               }}
               className="btn-gold"
@@ -266,7 +267,17 @@ export default function InventoryPage() {
         />
       </div>
 
-      {showForm && (
+      {showForm && formLoading && (
+        <FormLoadingDrawer
+          onClose={() => {
+            setShowForm(false);
+            setFormLoading(false);
+            setEditing(null);
+          }}
+        />
+      )}
+
+      {showForm && !formLoading && (
         <ProductForm
           initial={editing}
           items={items}
@@ -298,15 +309,17 @@ export default function InventoryPage() {
           onEdit={async () => {
             const it = viewing;
             setViewing(null);
-            setEditLoading(true);
+            // Open the drawer immediately with a spinner, then load full images.
+            setEditing(null);
+            setFormLoading(true);
+            setShowForm(true);
             try {
               const res = await fetch(`/api/inventory/${it.id}`);
               setEditing(res.ok ? await res.json() : it);
             } catch {
               setEditing(it);
             } finally {
-              setEditLoading(false);
-              setShowForm(true);
+              setFormLoading(false);
             }
           }}
         />
@@ -334,7 +347,7 @@ export default function InventoryPage() {
       ) : !hydrated ? (
         <SkeletonRows />
       ) : items.length === 0 ? (
-        <EmptyState onAdd={() => setShowForm(true)} />
+        <EmptyState onAdd={() => { setEditing(null); setFormLoading(false); setShowForm(true); }} />
       ) : (
         <>
           {/* Toolbar */}
@@ -551,22 +564,24 @@ export default function InventoryPage() {
                           </button>
                           <button
                             onClick={async () => {
-                              setEditLoading(true);
+                              // Open the drawer immediately with a spinner, then
+                              // load the full item (heavy base64 images) in the
+                              // background so the click feels instant.
+                              setEditing(null);
+                              setFormLoading(true);
+                              setShowForm(true);
                               try {
                                 const res = await fetch(`/api/inventory/${i.id}`);
-                                const full = res.ok ? await res.json() : i;
-                                setEditing(full);
+                                setEditing(res.ok ? await res.json() : i);
                               } catch {
                                 setEditing(i);
                               } finally {
-                                setEditLoading(false);
-                                setShowForm(true);
+                                setFormLoading(false);
                               }
                             }}
-                            disabled={editLoading}
-                            className="text-xs font-semibold text-[color:var(--brand-navy)] hover:underline mr-3 disabled:opacity-50"
+                            className="text-xs font-semibold text-[color:var(--brand-navy)] hover:underline mr-3"
                           >
-                            {editLoading ? "…" : "Edit"}
+                            Edit
                           </button>
                           {confirmDelete === i.id ? (
                             <span className="inline-flex items-center gap-2">
@@ -1358,6 +1373,42 @@ function ProductViewPanel({
           >
             Open on store ↗
           </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Lightweight loading drawer shown while the edit form fetches images ----------
+
+function FormLoadingDrawer({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
+      <div className="relative h-full w-full max-w-md bg-white shadow-2xl flex flex-col">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[color:var(--border)] shrink-0">
+          <h2 className="font-bold text-base text-[color:var(--brand-navy)]">Loading product…</h2>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="h-8 w-8 inline-flex items-center justify-center rounded-full text-[color:var(--muted)] hover:bg-[color:var(--brand-cream)] hover:text-[color:var(--brand-navy)] transition"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[color:var(--muted)]">
+          <div className="h-8 w-8 rounded-full border-2 border-[color:var(--brand-navy)] border-t-transparent animate-spin" />
+          <p className="text-sm">Loading product details…</p>
         </div>
       </div>
     </div>
