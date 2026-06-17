@@ -81,6 +81,7 @@ export default function InventoryPage() {
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editLoading, setEditLoading] = useState(false);
+  const [viewing, setViewing] = useState<InventoryItem | null>(null);
 
   // Toolbar state
   const [search, setSearch] = useState("");
@@ -286,6 +287,27 @@ export default function InventoryPage() {
             }
             setShowForm(false);
             setEditing(null);
+          }}
+        />
+      )}
+
+      {viewing && (
+        <ProductViewPanel
+          item={viewing}
+          onClose={() => setViewing(null)}
+          onEdit={async () => {
+            const it = viewing;
+            setViewing(null);
+            setEditLoading(true);
+            try {
+              const res = await fetch(`/api/inventory/${it.id}`);
+              setEditing(res.ok ? await res.json() : it);
+            } catch {
+              setEditing(it);
+            } finally {
+              setEditLoading(false);
+              setShowForm(true);
+            }
           }}
         />
       )}
@@ -520,15 +542,13 @@ export default function InventoryPage() {
                           )}
                         </td>
                         <td className="px-3 py-3 text-right whitespace-nowrap">
-                          <a
-                            href={`/products/${i.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="View this product on the storefront"
+                          <button
+                            onClick={() => setViewing(i)}
+                            title="Preview this product"
                             className="text-xs font-semibold text-[color:var(--muted)] hover:text-[color:var(--brand-navy)] hover:underline mr-3"
                           >
                             View
-                          </a>
+                          </button>
                           <button
                             onClick={async () => {
                               setEditLoading(true);
@@ -1172,5 +1192,145 @@ function Field({
       </span>
       {children}
     </label>
+  );
+}
+
+// ---------- Product preview drawer (slides in from the right) ----------
+
+function ProductViewPanel({
+  item,
+  onClose,
+  onEdit,
+}: {
+  item: InventoryItem;
+  onClose: () => void;
+  onEdit: () => void;
+}) {
+  const [activeImg, setActiveImg] = useState(0);
+  const images = item.images ?? [];
+
+  // Close on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const onSale = item.salePrice != null && item.salePrice < item.price;
+  const stock =
+    item.stock === 0
+      ? { label: "Out of stock", cls: "badge-red" }
+      : item.stock <= item.reorderAt
+      ? { label: "Low stock", cls: "badge-amber" }
+      : { label: "In stock", cls: "badge-green" };
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
+      <div className="relative h-full w-full max-w-md bg-white shadow-2xl flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[color:var(--border)] shrink-0">
+          <h2 className="font-bold text-base text-[color:var(--brand-navy)]">Product preview</h2>
+          <button
+            onClick={onClose}
+            aria-label="Close preview"
+            className="h-8 w-8 inline-flex items-center justify-center rounded-full text-[color:var(--muted)] hover:bg-[color:var(--brand-cream)] hover:text-[color:var(--brand-navy)] transition"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Images */}
+          {images.length > 0 ? (
+            <div>
+              <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-[color:var(--brand-cream)] border border-[color:var(--border)]">
+                <Image src={images[activeImg]} alt={item.name} fill sizes="420px" className="object-contain" unoptimized />
+              </div>
+              {images.length > 1 && (
+                <div className="mt-2 flex gap-2 flex-wrap">
+                  {images.map((src, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActiveImg(idx)}
+                      className={`relative h-14 w-14 rounded-lg overflow-hidden border-2 transition ${
+                        idx === activeImg ? "border-[color:var(--brand-navy)]" : "border-transparent hover:border-[color:var(--border)]"
+                      }`}
+                    >
+                      <Image src={src} alt="" fill sizes="56px" className="object-cover" unoptimized />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="aspect-square w-full rounded-xl bg-[color:var(--brand-cream)] border border-[color:var(--border)] flex items-center justify-center text-sm text-[color:var(--muted)]">
+              No images
+            </div>
+          )}
+
+          {/* Identity */}
+          <div>
+            <h3 className="font-bold text-lg text-[color:var(--brand-navy)] leading-snug">{item.name}</h3>
+            <div className="text-xs text-[color:var(--muted)] mt-0.5">{item.sku}</div>
+            <span className="inline-block mt-2 badge bg-[color:var(--brand-cream)] text-[color:var(--brand-navy)]">{item.category}</span>
+          </div>
+
+          {/* Price */}
+          {item.price === 0 ? (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2 font-medium">
+              ⚠ Needs pricing — set a price using Edit so customers don&apos;t see GH₵0.
+            </div>
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-[color:var(--brand-navy)]">{formatGHS(item.salePrice ?? item.price)}</span>
+              {onSale && <span className="text-sm line-through text-[color:var(--muted)]">{formatGHS(item.price)}</span>}
+            </div>
+          )}
+
+          {/* Stock */}
+          <div className="flex items-center gap-2">
+            <span className={`badge ${stock.cls}`}>{stock.label}</span>
+            <span className="text-sm text-[color:var(--muted)]">{item.stock} unit{item.stock === 1 ? "" : "s"} in stock</span>
+          </div>
+
+          {/* Description */}
+          {item.description && (
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-[color:var(--muted)] font-bold mb-1">Description</div>
+              <p className="text-sm leading-relaxed text-[color:var(--brand-navy)] whitespace-pre-wrap">{item.description}</p>
+            </div>
+          )}
+
+          {/* Tags */}
+          {item.tags && item.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {item.tags.map((t) => (
+                <span key={t} className="text-[11px] px-2 py-0.5 rounded-full bg-[color:var(--brand-cream)] text-[color:var(--muted)]">#{t}</span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2 px-5 py-3 border-t border-[color:var(--border)] shrink-0">
+          <button onClick={onEdit} className="btn-gold flex-1 justify-center">Edit product</button>
+          <a
+            href={`/products/${item.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-outline text-sm whitespace-nowrap"
+            title="Open the live storefront page in a new tab"
+          >
+            Open on store ↗
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
