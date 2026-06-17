@@ -6,24 +6,11 @@ export const authConfig = {
   pages: { signIn: "/login" },
   providers: [],
   callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const role = (auth?.user as { role?: string } | undefined)?.role;
-      const isAdmin = nextUrl.pathname.startsWith("/admin");
-      const isAccount = nextUrl.pathname.startsWith("/account");
-
-      if (isAdmin && !isLoggedIn) {
-        const loginUrl = new URL("/login", nextUrl);
-        loginUrl.searchParams.set("callbackUrl", nextUrl.pathname);
-        return Response.redirect(loginUrl);
-      }
-      if (isAccount && !isLoggedIn) {
-        return Response.redirect(new URL("/register", nextUrl));
-      }
-      // Customers cannot access admin dashboard
-      if (isAdmin && isLoggedIn && role === "customer") {
-        return Response.redirect(new URL("/account", nextUrl));
-      }
+    authorized() {
+      // Admin auth is handled client-side (localStorage + AuthGuard). The proxy
+      // matcher only covers /admin, which must NOT be gated server-side: admins
+      // have no NextAuth session, so a redirect here loops /admin → /login forever.
+      // Allow the request through; AuthGuard enforces login in the browser.
       return true;
     },
   },
