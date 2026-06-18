@@ -18,6 +18,7 @@ model User {
   name         String?
   passwordHash String
   role         String   @default("admin")  // "admin" | "super_admin"
+  permissions  String?  // JSON string[] of allowed sections; null = unrestricted (super_admin)
   createdAt    DateTime @default(now())
 
   payments      Payment[]

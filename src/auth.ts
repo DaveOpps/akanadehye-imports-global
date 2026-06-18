@@ -22,7 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (user) {
           const valid = await bcrypt.compare(password, user.passwordHash);
           if (!valid) return null;
-          return { id: user.id, email: user.email, name: user.name ?? "Admin", role: user.role };
+          return { id: user.id, email: user.email, name: user.name ?? "Admin", role: user.role, permissions: user.permissions ?? null };
         }
 
         // Check Customer table
@@ -43,13 +43,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role ?? "admin";
+        token.permissions = (user as { permissions?: string | null }).permissions ?? null;
       }
       return token;
     },
     session({ session, token }) {
       if (session.user) {
-        (session.user as { id?: string; role?: string }).id = token.id as string;
-        (session.user as { id?: string; role?: string }).role = token.role as string;
+        const u = session.user as { id?: string; role?: string; permissions?: string | null };
+        u.id = token.id as string;
+        u.role = token.role as string;
+        u.permissions = (token.permissions ?? null) as string | null;
       }
       return session;
     },
