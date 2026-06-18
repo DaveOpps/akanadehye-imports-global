@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, Suspense, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { login, getAuthUser } from "@/lib/auth";
-import { signIn } from "next-auth/react";
+import { signIn, getSession, useSession } from "next-auth/react";
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const rawCallback = searchParams.get("callbackUrl");
+  const { status } = useSession();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,37 +16,30 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Already logged in as admin — redirect away
+  // Already signed in — bounce straight to the dashboard.
   useEffect(() => {
-    if (getAuthUser()) {
-      router.replace(rawCallback ?? "/admin");
+    if (status === "authenticated") {
+      window.location.href = rawCallback ?? "/admin";
     }
-  }, [router, rawCallback]);
+  }, [status, rawCallback]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    // Try admin/staff credentials first (localStorage-based, no DB needed)
-    const adminUser = login(email, password);
-    if (adminUser) {
-      // Hard navigation guarantees localStorage is committed and the admin
-      // layout mounts fresh — no SPA race where AuthGuard reads stale state.
-      window.location.href = rawCallback ?? "/admin";
+    const result = await signIn("credentials", { email, password, redirect: false });
+    if (result?.error) {
+      setError("Invalid email or password.");
+      setLoading(false);
       return;
     }
 
-    // Fall back to NextAuth for customer accounts
-    const result = await signIn("credentials", { email, password, redirect: false });
-    setLoading(false);
-
-    if (result?.error) {
-      setError("Invalid email or password.");
-    } else {
-      router.push("/account");
-      router.refresh();
-    }
+    // Read the fresh session to route by role. Hard navigation guarantees the
+    // new session cookie is picked up on the destination page.
+    const session = await getSession();
+    const role = (session?.user as { role?: string } | undefined)?.role;
+    window.location.href = role === "customer" ? "/account" : (rawCallback ?? "/admin");
   }
 
   return (
