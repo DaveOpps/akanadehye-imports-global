@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   useInventory,
   useInvoices,
@@ -50,6 +51,8 @@ function auditEventDetail(log: AuditLog): string {
 }
 
 export default function DashboardOverview() {
+  const { data: session } = useSession();
+  const userName = session?.user?.name?.split(" ")[0] ?? "there";
   const payments = usePayments();
   const inventory = useInventory();
   const invoices = useInvoices();
@@ -189,13 +192,13 @@ export default function DashboardOverview() {
       <header className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[color:var(--brand-gold)] to-[color:var(--brand-clay)] inline-flex items-center justify-center text-white font-bold text-lg">
-            N
+            {(session?.user?.name ?? "A").charAt(0).toUpperCase()}
           </div>
           <div>
             <div className="text-lg font-bold flex items-center gap-1.5">
-              {greeting} <span>{greetIcon}</span>
+              {greeting}, {userName} <span>{greetIcon}</span>
             </div>
-            <div className="text-sm text-[color:var(--muted)]">Nanayaw</div>
+            <div className="text-sm text-[color:var(--muted)]">{session?.user?.name ?? "Admin"}</div>
           </div>
         </div>
         <button
