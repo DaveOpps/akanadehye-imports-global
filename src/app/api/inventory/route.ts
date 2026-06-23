@@ -9,7 +9,9 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.toLowerCase() ?? "";
   const category = searchParams.get("category") ?? "";
-  const limit = Math.min(Number(searchParams.get("limit") ?? 10), 50);
+  // Cap high enough for the full admin catalogue (list returns thumbnail URLs,
+  // not base64, so the payload stays small). The bot brain still passes small limits.
+  const limit = Math.min(Number(searchParams.get("limit") ?? 10), 1000);
   const userId = searchParams.get("userId") ?? undefined;
 
   const items = await prisma.inventoryItem.findMany({

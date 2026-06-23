@@ -147,7 +147,7 @@ function useDbInventory() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    fetch("/api/inventory?limit=500")
+    fetch("/api/inventory?limit=1000")
       .then((r) => (r.ok ? r.json() : { items: [] }))
       .then(({ items: data }: { items: InventoryItem[] }) => {
         setItems(Array.isArray(data) ? data : []);
