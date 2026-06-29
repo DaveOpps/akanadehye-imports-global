@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { reply } from "@/lib/botBrain";
 import { replyWithClaude } from "@/lib/claudeBot";
+import { checkBotRateLimit, RATE_LIMIT_MESSAGES } from "@/lib/rateLimit";
+
+async function sendTelegram(token: string, chatId: number, text: string) {
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+  }).catch(() => {
+    /* swallow — Telegram retries on non-200, but we don't want to break the webhook */
+  });
+}
 
 // Default persona used by server webhooks. Once Auth/DB lands (Sprint 1),
 // load the merchant's saved persona instead.
@@ -56,21 +67,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  // Throttle before any Claude call so spam can't drain the Anthropic quota.
+  const limit = checkBotRateLimit(`tg:${msg.chat.id}`);
+  if (!limit.ok) {
+    await sendTelegram(token, msg.chat.id, RATE_LIMIT_MESSAGES[limit.scope]);
+    return NextResponse.json({ ok: true, rateLimited: limit.scope });
+  }
+
   const botReply = process.env.ANTHROPIC_API_KEY
     ? await replyWithClaude(msg.text, DEFAULT_PERSONA, [])
     : await reply(msg.text);
 
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: msg.chat.id,
-      text: botReply.text,
-      disable_web_page_preview: true,
-    }),
-  }).catch(() => {
-    /* swallow — Telegram will retry on non-200, but we don't want to break the webhook */
-  });
+  await sendTelegram(token, msg.chat.id, botReply.text);
 
   return NextResponse.json({ ok: true });
 }

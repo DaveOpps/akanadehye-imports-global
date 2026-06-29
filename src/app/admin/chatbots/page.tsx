@@ -95,6 +95,13 @@ export default function ChatbotsOverview() {
             iconPath="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0"
           />
           <QuickLink
+            href="/admin/chatbots/rate-limits"
+            title="Rate limits"
+            body="Live monitor of bot throttling — protects your Anthropic quota from spam."
+            accent="navy"
+            iconPath="M12 14l4-4M21 12a9 9 0 10-18 0 9 9 0 0018 0z"
+          />
+          <QuickLink
             href="/admin/chatbots/telegram"
             title="Telegram setup"
             body="Get a token from BotFather, paste, done."

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { reply } from "@/lib/botBrain";
 import { replyWithClaude } from "@/lib/claudeBot";
+import { checkBotRateLimit, RATE_LIMIT_MESSAGES } from "@/lib/rateLimit";
 
 const DEFAULT_PERSONA = {
   shopName: "Akanadehye",
@@ -52,6 +53,16 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "text/xml" },
       });
     }
+
+    // Throttle before any Claude call. `From` is the sender's WhatsApp number.
+    const from = String(form.get("From") ?? "twilio-unknown");
+    const limit = checkBotRateLimit(`wa:${from}`);
+    if (!limit.ok) {
+      return new NextResponse(twiml(RATE_LIMIT_MESSAGES[limit.scope]), {
+        headers: { "Content-Type": "text/xml" },
+      });
+    }
+
     const botReply = await smartReply(body);
     return new NextResponse(twiml(botReply.text), {
       headers: { "Content-Type": "text/xml" },
@@ -85,23 +96,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const sendMeta = (text: string) =>
+      fetch(
+        `https://graph.facebook.com/v18.0/${change.metadata!.phone_number_id}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: message.from,
+            type: "text",
+            text: { body: text },
+          }),
+        }
+      ).catch(() => {});
+
+    // Throttle before any Claude call.
+    const limit = checkBotRateLimit(`wa:${message.from}`);
+    if (!limit.ok) {
+      await sendMeta(RATE_LIMIT_MESSAGES[limit.scope]);
+      return NextResponse.json({ ok: true, rateLimited: limit.scope });
+    }
+
     const botReply = await smartReply(message.text.body);
-    await fetch(
-      `https://graph.facebook.com/v18.0/${change.metadata.phone_number_id}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: message.from,
-          type: "text",
-          text: { body: botReply.text },
-        }),
-      }
-    ).catch(() => {});
+    await sendMeta(botReply.text);
 
     return NextResponse.json({ ok: true });
   }

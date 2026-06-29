@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { reply, type Persona } from "@/lib/botBrain";
 import { replyWithClaude, type ConversationMsg } from "@/lib/claudeBot";
+import { checkBotRateLimit, RATE_LIMIT_MESSAGES } from "@/lib/rateLimit";
 
 const DEFAULTS = {
   shopName: "Akanadehye",
@@ -18,6 +19,18 @@ export async function POST(req: NextRequest) {
     history?: ConversationMsg[];
   };
   if (!message) return NextResponse.json({ ok: false, error: "message required" }, { status: 400 });
+
+  // Throttle the test console too — it hits the same Claude path. Key by client IP.
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "test-console";
+  const limit = checkBotRateLimit(`test:${ip}`);
+  if (!limit.ok) {
+    return NextResponse.json({
+      ok: true,
+      brain: "ratelimit",
+      rateLimited: limit.scope,
+      reply: { text: RATE_LIMIT_MESSAGES[limit.scope] },
+    });
+  }
 
   const merged = { ...DEFAULTS, ...(persona ?? {}) };
 
