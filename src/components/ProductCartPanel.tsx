@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useCart } from "./CartContext";
 import { formatPrice, discountedPrice, type Product } from "@/lib/products";
+import PreOrderPanel from "./PreOrderPanel";
 
 const WISHLIST_KEY = "akanadehye-wishlist-v1";
 
@@ -153,14 +154,24 @@ export default function ProductCartPanel({ product }: { product: Product }) {
                 You have {inCart.quantity} of this in your cart already
               </div>
             )}
+
+            {/* In stock but also open for pre-order (e.g. reserve incoming batch) */}
+            {product.preorderable && (
+              <div className="pt-1 border-t border-[color:var(--border)]">
+                <PreOrderPanel product={product} variant="secondary" />
+              </div>
+            )}
           </>
         )}
 
-        {outOfStock && (
-          <button disabled className="btn-outline w-full justify-center opacity-60 cursor-not-allowed">
-            Out of stock — notify me
-          </button>
-        )}
+        {outOfStock &&
+          (product.preorderable ? (
+            <PreOrderPanel product={product} variant="primary" />
+          ) : (
+            <button disabled className="btn-outline w-full justify-center opacity-60 cursor-not-allowed">
+              Out of stock — notify me
+            </button>
+          ))}
       </div>
 
       {/* Trust badges */}

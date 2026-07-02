@@ -26,6 +26,8 @@ export type Product = {
   returnPolicy?: string;
   availabilityStatus?: string;
   minimumOrderQuantity?: number;
+  preorderable?: boolean;
+  expectedArrival?: string | null; // ISO date string, or null
 };
 
 export type ProductsResponse = {

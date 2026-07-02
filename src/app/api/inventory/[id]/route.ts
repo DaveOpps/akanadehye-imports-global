@@ -18,6 +18,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       stock: item.stock,
       reorderAt: item.reorderAt,
       description: item.description,
+      preorderable: item.preorderable,
+      expectedArrival: item.expectedArrival,
       tags: item.tags ? JSON.parse(item.tags) : [],
       images: item.images ? JSON.parse(item.images) : [],
       createdAt: item.createdAt,
@@ -38,12 +40,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
   }
 
-  const allowed = ["name", "category", "price", "salePrice", "stock", "reorderAt", "description", "images", "tags"];
+  const allowed = ["name", "category", "price", "salePrice", "stock", "reorderAt", "description", "images", "tags", "preorderable", "expectedArrival"];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) {
       if (key === "images" || key === "tags") {
         data[key] = body[key] != null ? JSON.stringify(body[key]) : null;
+      } else if (key === "expectedArrival") {
+        data[key] = body[key] ? new Date(String(body[key])) : null;
+      } else if (key === "preorderable") {
+        data[key] = Boolean(body[key]);
       } else {
         data[key] = body[key];
       }

@@ -1,5 +1,6 @@
-// Akanadehye Prisma schema — SQLite for local dev.
-// Swap `provider = "postgresql"` and update DATABASE_URL when deploying.
+// Akanadehye Prisma schema — PostgreSQL (Supabase).
+// App runtime connects via the transaction pooler (:6543); migrations/db push
+// should use a direct/session connection (:5432).
 
 generator client {
   provider = "prisma-client-js"
@@ -66,6 +67,8 @@ model InventoryItem {
   description String?
   images      String?  // JSON-encoded String[]
   tags        String?  // JSON-encoded String[]
+  preorderable    Boolean   @default(false)  // admin toggle: allow reservations even when out of stock
+  expectedArrival DateTime?                   // optional ETA shown to customers on the pre-order form
   updatedAt   DateTime @updatedAt
 
   @@unique([userId, sku])
@@ -147,6 +150,35 @@ model Order {
   couponCode       String?
 
   @@index([userId, createdAt])
+  @@index([customerEmail, createdAt])
+}
+
+// ---------- Pre-orders (reserve now, pay on arrival) ----------
+
+model PreOrder {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  number    String   @unique  // human reference, e.g. PRE-00042
+
+  // Snapshot of the reserved item (itemId is decoupled — kept even if the
+  // inventory item is later edited or deleted).
+  itemId          String?
+  itemName        String
+  itemSku         String?
+  quantity        Int      @default(1)
+  unitPrice       Float
+  expectedArrival DateTime?
+
+  // Customer contact captured at reservation.
+  customerName  String
+  customerEmail String
+  customerPhone String?
+  note          String?
+
+  status String @default("pending")  // pending | confirmed | arrived | fulfilled | cancelled
+
+  @@index([status, createdAt])
   @@index([customerEmail, createdAt])
 }
 

@@ -46,6 +46,8 @@ export async function GET(req: NextRequest) {
       stock: i.stock,
       reorderAt: i.reorderAt,
       description: i.description,
+      preorderable: i.preorderable,
+      expectedArrival: i.expectedArrival,
       tags: i.tags ? (JSON.parse(i.tags) as string[]) : [],
       // Return thumbnail URL only (not full base64) to keep the list response small.
       // The admin edit form fetches the full item via /api/inventory/:id
@@ -81,6 +83,8 @@ export async function POST(req: NextRequest) {
     description,
     images,
     tags,
+    preorderable,
+    expectedArrival,
   } = body as Record<string, unknown>;
 
   if (!sku || !name || !category || price == null || stock == null) {
@@ -102,6 +106,8 @@ export async function POST(req: NextRequest) {
         description: description ? String(description) : null,
         images: images ? JSON.stringify(images) : null,
         tags: tags ? JSON.stringify(tags) : null,
+        preorderable: Boolean(preorderable),
+        expectedArrival: expectedArrival ? new Date(String(expectedArrival)) : null,
       },
     });
     revalidatePath("/");

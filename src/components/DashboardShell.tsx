@@ -22,6 +22,7 @@ const SECTIONS: Section[] = [
       { href: "/admin",            label: "Overview",   icon: "grid",      permission: "overview"  },
       { href: "/admin/inventory",  label: "Inventory",  icon: "box",       permission: "inventory" },
       { href: "/admin/orders",     label: "Orders",     icon: "orders",    permission: "orders"    },
+      { href: "/admin/preorders",  label: "Pre-orders", icon: "preorder",  permission: "orders"    },
       { href: "/admin/customers",  label: "Customers",  icon: "customers", permission: "customers" },
       { href: "/admin/sourcing",   label: "Sourcing",   icon: "globe",     permission: "sourcing"  },
     ],
@@ -181,6 +182,7 @@ function Icon({ name }: { name: string }) {
     persona:  <path d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
     play:     <path d="M8 5v14l11-7z" fill="currentColor" />,
     gauge:    <><path d="M12 14l4-4M21 12a9 9 0 10-18 0 9 9 0 0018 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 12h2M19 12h2M12 3v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></>,
+    preorder: <><rect x="3" y="4" width="18" height="17" rx="2" stroke="currentColor" strokeWidth="2"/><path d="M3 9h18M8 2v4M16 2v4M9 15l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></>,
     finance:  <><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="currentColor" strokeWidth="2" /><path d="M12 6v2M12 16v2M8.5 9.5A3 3 0 0112 8a3 3 0 013 3c0 2-3 2.5-3 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></>,
     users:    <><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="19" cy="7" r="0" fill="currentColor"/><path d="M19 5v4M17 7h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></>,
   };

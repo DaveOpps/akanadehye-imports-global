@@ -37,6 +37,10 @@ export type InventoryItem = {
   description?: string;
   /** Lowercase, searchable keywords. */
   tags?: string[];
+  /** When true, customers can reserve this item (pay on arrival) even if out of stock. */
+  preorderable?: boolean;
+  /** Optional expected arrival date (ISO string) shown on the pre-order form. */
+  expectedArrival?: string | null;
 };
 
 export type InvoiceLine = {

@@ -974,6 +974,10 @@ function ProductForm({
   const [images, setImages] = useState<string[]>(initial?.images ?? []);
   const [description, setDescription] = useState(initial?.description ?? "");
   const [tagsInput, setTagsInput] = useState((initial?.tags ?? []).join(", "));
+  const [preorderable, setPreorderable] = useState(initial?.preorderable ?? false);
+  const [expectedArrival, setExpectedArrival] = useState(
+    initial?.expectedArrival ? new Date(initial.expectedArrival).toISOString().slice(0, 10) : ""
+  );
 
   // Close the drawer on Escape (same as the View panel)
   useEffect(() => {
@@ -1016,6 +1020,9 @@ function ProductForm({
           .filter(Boolean).length > 0
           ? tagsInput.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean)
           : undefined,
+      preorderable,
+      expectedArrival:
+        preorderable && expectedArrival ? new Date(expectedArrival).toISOString() : null,
     });
   }
 
@@ -1200,6 +1207,51 @@ function ProductForm({
             className="input"
           />
         </Field>
+      </section>
+
+      {/* Pre-order */}
+      <section className="rounded-xl border border-[color:var(--border)] bg-[color:var(--brand-cream)]/40 p-4">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={preorderable}
+            onClick={() => setPreorderable((v) => !v)}
+            className={`mt-0.5 relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition ${
+              preorderable ? "bg-[color:var(--brand-navy)]" : "bg-[color:var(--border)]"
+            }`}
+          >
+            <span
+              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+                preorderable ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+          <span>
+            <span className="block text-sm font-semibold text-[color:var(--brand-navy)]">
+              Available for pre-order
+            </span>
+            <span className="block text-[11px] text-[color:var(--muted)] mt-0.5">
+              Shoppers can reserve this item (reserve now, pay on arrival) — even when stock is 0.
+            </span>
+          </span>
+        </label>
+
+        {preorderable && (
+          <div className="mt-4 pl-14">
+            <Field label="Expected arrival (optional)">
+              <input
+                type="date"
+                value={expectedArrival}
+                onChange={(e) => setExpectedArrival(e.target.value)}
+                className="input max-w-xs"
+              />
+              <p className="text-[10px] text-[color:var(--muted)] mt-1">
+                Shown to customers on the pre-order form. Leave blank if unknown.
+              </p>
+            </Field>
+          </div>
+        )}
       </section>
 
         </div>
