@@ -61,6 +61,11 @@ export default function ProductRail({
                     -{Math.round(p.discountPercentage)}%
                   </span>
                 )}
+                {p.preorderable && (
+                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-[color:var(--brand-navy)] text-[color:var(--brand-gold)] text-[10px] font-bold uppercase tracking-wide">
+                    Pre-order
+                  </span>
+                )}
               </div>
               <h3 className="font-medium text-sm leading-tight line-clamp-2 min-h-[2.5rem]">
                 {p.title}
@@ -74,7 +79,10 @@ export default function ProductRail({
                 </div>
               )}
               <div className="text-[10px] mt-1 text-[color:var(--muted)]">
-                <span className="text-[color:var(--brand-gold)]">★</span> {p.rating.toFixed(1)} · {p.stock} left
+                <span className="text-[color:var(--brand-gold)]">★</span> {p.rating.toFixed(1)} ·{" "}
+                {p.stock > 0 ? `${p.stock} left` : p.preorderable ? (
+                  <span className="text-[color:var(--brand-navy)] font-semibold">reserve now</span>
+                ) : "out of stock"}
               </div>
             </Link>
           );

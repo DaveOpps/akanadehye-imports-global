@@ -39,6 +39,16 @@ export default function ProductCard({ product }: { product: Product }) {
             -{Math.round(product.discountPercentage)}%
           </span>
         )}
+        {/* Pre-order sign — reserve now, pay on arrival */}
+        {product.preorderable && (
+          <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[color:var(--brand-navy)] text-[color:var(--brand-gold)] text-[10px] font-bold uppercase tracking-wide leading-none shadow">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+              <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Pre-order
+          </span>
+        )}
       </Link>
 
       {/* Body */}
@@ -63,6 +73,8 @@ export default function ProductCard({ product }: { product: Product }) {
           <span className="font-medium text-[color:var(--brand-navy)]">{product.rating.toFixed(1)}</span>
           {product.stock > 0 ? (
             <span>· {product.stock} in stock</span>
+          ) : product.preorderable ? (
+            <span className="text-[color:var(--brand-navy)] font-semibold">· Reserve — pay on arrival</span>
           ) : (
             <span className="text-[color:var(--brand-clay)]">· Out of stock</span>
           )}
@@ -93,17 +105,30 @@ export default function ProductCard({ product }: { product: Product }) {
               </svg>
               View
             </Link>
-            <button
-              onClick={addToCart}
-              disabled={product.stock === 0}
-              aria-label={`Add ${product.title} to basket`}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[color:var(--brand-navy)] text-white text-xs font-bold hover:bg-[color:var(--brand-navy-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6zM3 6h18M16 10a4 4 0 11-8 0" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-              </svg>
-              Basket
-            </button>
+            {product.stock === 0 && product.preorderable ? (
+              <Link
+                href={`/products/${product.id}`}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[color:var(--brand-gold)] text-[color:var(--brand-navy)] text-xs font-bold hover:brightness-105 transition"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                  <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Pre-order
+              </Link>
+            ) : (
+              <button
+                onClick={addToCart}
+                disabled={product.stock === 0}
+                aria-label={`Add ${product.title} to basket`}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[color:var(--brand-navy)] text-white text-xs font-bold hover:bg-[color:var(--brand-navy-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6zM3 6h18M16 10a4 4 0 11-8 0" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                </svg>
+                Basket
+              </button>
+            )}
           </div>
         </div>
       </div>
