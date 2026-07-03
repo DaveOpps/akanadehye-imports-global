@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import { formatPrice } from "@/lib/products";
+import { PREORDER_LEAD_WORKING_DAYS } from "@/lib/dates";
 
 type PreOrder = {
   id: string;
@@ -19,10 +20,15 @@ type PreOrder = {
   customerPhone: string | null;
   note: string | null;
   status: string;
+  paymentMethod: string;
+  paymentStatus: string;
 };
 
 const STATUSES = ["pending", "confirmed", "arrived", "fulfilled", "cancelled"] as const;
 type Status = (typeof STATUSES)[number];
+
+const PAYMENT_STATUSES = ["awaiting_payment", "paid", "failed"] as const;
+type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 const STATUS_STYLE: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800",
@@ -30,6 +36,18 @@ const STATUS_STYLE: Record<string, string> = {
   arrived: "bg-indigo-100 text-indigo-800",
   fulfilled: "bg-green-100 text-green-800",
   cancelled: "bg-gray-200 text-gray-600",
+};
+
+const PAYMENT_STATUS_STYLE: Record<string, string> = {
+  awaiting_payment: "bg-amber-100 text-amber-800",
+  paid: "bg-green-100 text-green-800",
+  failed: "bg-red-100 text-red-700",
+};
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  "mobile-money": "Mobile Money",
+  card: "Card",
+  "bank-transfer": "Bank Transfer",
 };
 
 function fmtDate(iso: string | null): string {
@@ -58,15 +76,14 @@ export default function PreOrdersPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function setStatus(id: string, status: Status) {
+  async function patch(id: string, body: { status?: Status; paymentStatus?: PaymentStatus }) {
     setBusy(id);
-    // optimistic
-    setPreorders((prev) => prev?.map((p) => (p.id === id ? { ...p, status } : p)) ?? prev);
+    setPreorders((prev) => prev?.map((p) => (p.id === id ? { ...p, ...body } : p)) ?? prev);
     try {
       await fetch(`/api/preorders/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(body),
       });
     } catch {
       load(); // revert to server truth on failure
@@ -90,13 +107,12 @@ export default function PreOrdersPage() {
 
   const stats = useMemo(() => {
     const list = preorders ?? [];
+    const active = list.filter((p) => p.status !== "cancelled");
     return {
       total: list.length,
-      pending: list.filter((p) => p.status === "pending").length,
-      active: list.filter((p) => p.status === "confirmed" || p.status === "arrived").length,
-      value: list
-        .filter((p) => p.status !== "cancelled")
-        .reduce((n, p) => n + p.unitPrice * p.quantity, 0),
+      awaitingPayment: list.filter((p) => p.paymentStatus === "awaiting_payment" && p.status !== "cancelled").length,
+      paidValue: list.filter((p) => p.paymentStatus === "paid").reduce((n, p) => n + p.unitPrice * p.quantity, 0),
+      value: active.reduce((n, p) => n + p.unitPrice * p.quantity, 0),
     };
   }, [preorders]);
 
@@ -114,7 +130,7 @@ export default function PreOrdersPage() {
           { label: "Pre-orders" },
         ]}
         title="Pre-orders"
-        subtitle="Reservations customers placed for pre-order items — reserve now, pay on arrival."
+        subtitle={`Reservations customers placed for pre-order items — 100% payment required, up to ${PREORDER_LEAD_WORKING_DAYS} working days to arrive.`}
       />
 
       {error && <div className="card border-red-200 bg-red-50 text-red-800 text-sm mb-6">{error}</div>}
@@ -122,9 +138,9 @@ export default function PreOrdersPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Kpi label="Total pre-orders" value={String(stats.total)} />
-        <Kpi label="Awaiting action" value={String(stats.pending)} tone={stats.pending > 0 ? "clay" : "muted"} />
-        <Kpi label="Confirmed / arrived" value={String(stats.active)} />
-        <Kpi label="Reserved value" value={formatPrice(stats.value)} tone="navy" />
+        <Kpi label="Awaiting payment" value={String(stats.awaitingPayment)} tone={stats.awaitingPayment > 0 ? "clay" : "muted"} />
+        <Kpi label="Paid value" value={formatPrice(stats.paidValue)} tone="navy" />
+        <Kpi label="Total reserved value" value={formatPrice(stats.value)} />
       </div>
 
       {/* Filter */}
@@ -163,7 +179,8 @@ export default function PreOrdersPage() {
                   <th className="px-4 py-2.5 font-semibold">Ref / Date</th>
                   <th className="px-4 py-2.5 font-semibold">Item</th>
                   <th className="px-4 py-2.5 font-semibold">Customer</th>
-                  <th className="px-4 py-2.5 font-semibold text-right">Qty · Est. total</th>
+                  <th className="px-4 py-2.5 font-semibold text-right">Qty · Total</th>
+                  <th className="px-4 py-2.5 font-semibold">Payment</th>
                   <th className="px-4 py-2.5 font-semibold">Arrival</th>
                   <th className="px-4 py-2.5 font-semibold">Status</th>
                   <th className="px-4 py-2.5 font-semibold text-right">Actions</th>
@@ -190,12 +207,25 @@ export default function PreOrdersPage() {
                       <div className="font-semibold">{formatPrice(p.unitPrice * p.quantity)}</div>
                       <div className="text-[11px] text-[color:var(--muted)]">{p.quantity} × {formatPrice(p.unitPrice)}</div>
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-[11px] text-[color:var(--muted)] mb-1">{PAYMENT_METHOD_LABEL[p.paymentMethod] ?? p.paymentMethod}</div>
+                      <select
+                        value={p.paymentStatus}
+                        disabled={busy === p.id}
+                        onChange={(e) => patch(p.id, { paymentStatus: e.target.value as PaymentStatus })}
+                        className={`text-[11px] font-bold rounded-full px-2 py-0.5 border-0 cursor-pointer ${PAYMENT_STATUS_STYLE[p.paymentStatus] ?? "bg-gray-100 text-gray-700"}`}
+                      >
+                        <option value="awaiting_payment">Awaiting payment</option>
+                        <option value="paid">Paid</option>
+                        <option value="failed">Failed</option>
+                      </select>
+                    </td>
                     <td className="px-4 py-3 text-xs text-[color:var(--muted)] whitespace-nowrap">{fmtDate(p.expectedArrival)}</td>
                     <td className="px-4 py-3">
                       <select
                         value={p.status}
                         disabled={busy === p.id}
-                        onChange={(e) => setStatus(p.id, e.target.value as Status)}
+                        onChange={(e) => patch(p.id, { status: e.target.value as Status })}
                         className={`text-xs font-bold rounded-full px-2.5 py-1 border-0 cursor-pointer capitalize ${STATUS_STYLE[p.status] ?? "bg-gray-100 text-gray-700"}`}
                       >
                         {STATUSES.map((s) => (

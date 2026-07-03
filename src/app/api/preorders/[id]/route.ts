@@ -3,8 +3,9 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
 
 const STATUSES = ["pending", "confirmed", "arrived", "fulfilled", "cancelled"] as const;
+const PAYMENT_STATUSES = ["awaiting_payment", "paid", "failed"] as const;
 
-// PATCH /api/preorders/:id — admin: update reservation status
+// PATCH /api/preorders/:id — admin: update fulfillment status and/or payment status
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   const role = (session?.user as { role?: string } | undefined)?.role;
@@ -13,16 +14,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const { id } = await params;
-  let body: { status?: string };
+  let body: { status?: string; paymentStatus?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!body.status || !STATUSES.includes(body.status as (typeof STATUSES)[number])) {
+  if (body.status === undefined && body.paymentStatus === undefined) {
+    return NextResponse.json({ ok: false, error: "status or paymentStatus required" }, { status: 400 });
+  }
+  if (body.status !== undefined && !STATUSES.includes(body.status as (typeof STATUSES)[number])) {
     return NextResponse.json(
       { ok: false, error: `status must be one of: ${STATUSES.join(", ")}` },
+      { status: 400 }
+    );
+  }
+  if (body.paymentStatus !== undefined && !PAYMENT_STATUSES.includes(body.paymentStatus as (typeof PAYMENT_STATUSES)[number])) {
+    return NextResponse.json(
+      { ok: false, error: `paymentStatus must be one of: ${PAYMENT_STATUSES.join(", ")}` },
       { status: 400 }
     );
   }
@@ -30,7 +40,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const updated = await prisma.preOrder.update({
       where: { id },
-      data: { status: body.status },
+      data: {
+        ...(body.status !== undefined ? { status: body.status } : {}),
+        ...(body.paymentStatus !== undefined ? { paymentStatus: body.paymentStatus } : {}),
+      },
     });
     return NextResponse.json({ ok: true, preorder: updated });
   } catch {

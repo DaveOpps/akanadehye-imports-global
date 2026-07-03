@@ -2,15 +2,22 @@
 
 import { useState } from "react";
 import { formatPrice, discountedPrice, type Product } from "@/lib/products";
+import { formatEtaDate, PREORDER_LEAD_WORKING_DAYS } from "@/lib/dates";
 
 function formatEta(iso?: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  return Number.isNaN(d.getTime()) ? null : formatEtaDate(d);
 }
 
-type Result = { number: string; quantity: number } | null;
+type PaymentMethod = "mobile-money" | "card" | "bank-transfer";
+const PAYMENT_OPTIONS: { value: PaymentMethod; label: string }[] = [
+  { value: "mobile-money", label: "Mobile Money" },
+  { value: "card", label: "Card" },
+  { value: "bank-transfer", label: "Bank Transfer" },
+];
+
+type Result = { number: string; quantity: number; total: number; expectedArrival: string | null } | null;
 
 export default function PreOrderPanel({
   product,
@@ -21,6 +28,7 @@ export default function PreOrderPanel({
 }) {
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mobile-money");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -43,6 +51,7 @@ export default function PreOrderPanel({
         body: JSON.stringify({
           itemId: String(product.id),
           quantity: qty,
+          paymentMethod,
           customerName: name.trim(),
           customerEmail: email.trim(),
           customerPhone: phone.trim() || undefined,
@@ -53,7 +62,12 @@ export default function PreOrderPanel({
       if (!res.ok || !data.ok) {
         setError(data.error ?? "Something went wrong. Please try again.");
       } else {
-        setResult({ number: data.preorder.number, quantity: data.preorder.quantity });
+        setResult({
+          number: data.preorder.number,
+          quantity: data.preorder.quantity,
+          total: data.preorder.total,
+          expectedArrival: data.preorder.expectedArrival ?? null,
+        });
       }
     } catch {
       setError("Network error — please try again.");
@@ -67,7 +81,7 @@ export default function PreOrderPanel({
     // Reset only after a successful reservation so a retry keeps the form.
     if (result) {
       setResult(null);
-      setName(""); setEmail(""); setPhone(""); setNote(""); setQty(1);
+      setName(""); setEmail(""); setPhone(""); setNote(""); setQty(1); setPaymentMethod("mobile-money");
     }
   }
 
@@ -83,7 +97,7 @@ export default function PreOrderPanel({
           Pre-order this item
         </button>
         <p className="text-xs text-[color:var(--muted)] text-center">
-          Reserve now, pay on arrival{eta ? ` · expected ${eta}` : ""}
+          Full payment required · {eta ? `expected ${eta}` : `takes up to ${PREORDER_LEAD_WORKING_DAYS} working days`}
         </p>
       </div>
 
@@ -120,10 +134,31 @@ export default function PreOrderPanel({
                   <p className="text-2xl font-bold font-mono text-[color:var(--brand-navy)]">{result.number}</p>
                 </div>
                 <p className="text-sm text-[color:var(--brand-navy)]/90 leading-relaxed">
-                  We&apos;ve reserved <strong>{result.quantity} × {product.title}</strong>. No payment is
-                  needed now — we&apos;ll contact you to confirm and invoice when it arrives
-                  {eta ? ` (expected ${eta})` : ""}. A confirmation has been sent to your email.
+                  We&apos;ve reserved <strong>{result.quantity} × {product.title}</strong>. A confirmation has
+                  been sent to your email with payment instructions.
                 </p>
+                <div className="rounded-lg bg-amber-50 border border-amber-200 px-3.5 py-2.5 text-sm text-left">
+                  <span className="block text-[10px] uppercase tracking-wider text-amber-800 font-bold">
+                    Payment required to secure this pre-order
+                  </span>
+                  <span className="font-bold text-[color:var(--brand-navy)] text-base">
+                    {formatPrice(result.total)} — full amount, in advance
+                  </span>
+                  <span className="block text-[11px] text-amber-900 mt-0.5">
+                    Our team will contact you shortly to complete payment. Quote reference <strong>{result.number}</strong>.
+                  </span>
+                </div>
+                <div className="rounded-lg bg-[color:var(--brand-cream)]/60 px-3.5 py-2.5 text-sm">
+                  <span className="block text-[10px] uppercase tracking-wider text-[color:var(--muted)] font-semibold">
+                    Expected arrival
+                  </span>
+                  <span className="font-bold text-[color:var(--brand-navy)]">
+                    {formatEta(result.expectedArrival) ?? "—"}
+                  </span>
+                  <span className="block text-[11px] text-[color:var(--muted)] mt-0.5">
+                    Pre-orders take up to {PREORDER_LEAD_WORKING_DAYS} working days from full payment.
+                  </span>
+                </div>
                 <button type="button" onClick={close} className="btn-primary w-full justify-center">
                   Done
                 </button>
@@ -135,7 +170,7 @@ export default function PreOrderPanel({
                   <div className="min-w-0">
                     <div className="font-semibold text-sm text-[color:var(--brand-navy)] truncate">{product.title}</div>
                     <div className="text-xs text-[color:var(--muted)]">
-                      {formatPrice(price)} each{eta ? ` · expected ${eta}` : ""}
+                      {formatPrice(price)} each · {eta ? `expected ${eta}` : `up to ${PREORDER_LEAD_WORKING_DAYS} working days`}
                     </div>
                   </div>
                 </div>
@@ -151,8 +186,32 @@ export default function PreOrderPanel({
                   </label>
                   <div className="flex items-end">
                     <div className="text-sm text-[color:var(--muted)] pb-2.5">
-                      Est. total <strong className="text-[color:var(--brand-navy)]">{formatPrice(price * qty)}</strong>
+                      Total due now <strong className="text-[color:var(--brand-navy)]">{formatPrice(price * qty)}</strong>
                     </div>
+                  </div>
+                </div>
+
+                {/* Payment method */}
+                <div>
+                  <span className="block text-sm font-medium mb-1.5">Payment method</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {PAYMENT_OPTIONS.map((opt) => {
+                      const active = paymentMethod === opt.value;
+                      return (
+                        <button
+                          type="button"
+                          key={opt.value}
+                          onClick={() => setPaymentMethod(opt.value)}
+                          className={`text-xs font-semibold px-2 py-2.5 rounded-lg border-2 transition ${
+                            active
+                              ? "border-[color:var(--brand-navy)] bg-[color:var(--brand-cream)] text-[color:var(--brand-navy)]"
+                              : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-[color:var(--brand-navy)]"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -175,13 +234,15 @@ export default function PreOrderPanel({
 
                 {error && <p className="text-sm text-red-600">{error}</p>}
 
-                <div className="rounded-lg bg-[color:var(--brand-cream)]/60 px-3 py-2 text-[11px] text-[color:var(--muted)] leading-relaxed">
-                  No payment is taken now. This reserves your item — we&apos;ll confirm availability and
-                  send an invoice when the goods arrive.
+                <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-[11px] text-amber-900 leading-relaxed">
+                  <strong>100% payment is required</strong> to secure this pre-order — our team will contact
+                  you to complete payment via {PAYMENT_OPTIONS.find((o) => o.value === paymentMethod)?.label}.
+                  Pre-orders take up to{" "}
+                  <strong className="text-[color:var(--brand-navy)]">{PREORDER_LEAD_WORKING_DAYS} working days</strong> to arrive.
                 </div>
 
                 <button type="submit" disabled={submitting} className="btn-gold w-full justify-center disabled:opacity-60">
-                  {submitting ? "Reserving…" : "Place pre-order"}
+                  {submitting ? "Reserving…" : `Place pre-order · ${formatPrice(price * qty)}`}
                 </button>
               </form>
             )}

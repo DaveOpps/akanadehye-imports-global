@@ -4,10 +4,19 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
 import { hit } from "@/lib/rateLimit";
 import { sendOrderNotification } from "@/lib/notify";
+import { addWorkingDays, formatEtaDate, PREORDER_LEAD_WORKING_DAYS } from "@/lib/dates";
+
+const PAYMENT_METHODS = ["mobile-money", "card", "bank-transfer"] as const;
+const PAYMENT_LABELS: Record<(typeof PAYMENT_METHODS)[number], string> = {
+  "mobile-money": "Mobile Money",
+  card: "Card",
+  "bank-transfer": "Bank Transfer",
+};
 
 const createSchema = z.object({
   itemId: z.string().min(1),
   quantity: z.number().int().min(1).max(999).default(1),
+  paymentMethod: z.enum(PAYMENT_METHODS),
   customerName: z.string().min(1).max(120),
   customerEmail: z.string().email().max(200),
   customerPhone: z.string().max(40).optional(),
@@ -20,7 +29,10 @@ async function nextPreOrderNumber(): Promise<string> {
   return `PRE-${String(count + 1).padStart(5, "0")}`;
 }
 
-// POST /api/preorders — public: create a reservation (reserve now, pay on arrival)
+// POST /api/preorders — public: create a pre-order. Full (100%) payment is
+// required to secure it; no payment gateway is wired up yet, so — same as
+// checkout Orders elsewhere in this app — we capture the chosen method and
+// staff confirm once the money is actually received.
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "anon";
   const rl = hit(`preorder:${ip}`, { limit: 5, windowMs: 60_000 });
@@ -45,7 +57,7 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const { itemId, quantity, customerName, customerEmail, customerPhone, note } = parsed.data;
+  const { itemId, quantity, paymentMethod, customerName, customerEmail, customerPhone, note } = parsed.data;
 
   // Snapshot price/name from the DB — never trust the client for these.
   const item = await prisma.inventoryItem.findUnique({ where: { id: itemId } });
@@ -57,52 +69,45 @@ export async function POST(req: NextRequest) {
   }
 
   const unitPrice = item.salePrice ?? item.price;
+  const total = unitPrice * quantity;
+
+  // Every pre-order gets a concrete promised date: the admin's own ETA if set,
+  // otherwise our standard lead time counted from today.
+  const expectedArrival = item.expectedArrival ?? addWorkingDays(new Date(), PREORDER_LEAD_WORKING_DAYS);
+
+  const baseData = {
+    itemId: item.id,
+    itemName: item.name,
+    itemSku: item.sku,
+    quantity,
+    unitPrice,
+    expectedArrival,
+    customerName,
+    customerEmail,
+    customerPhone: customerPhone || null,
+    note: note || null,
+    paymentMethod,
+    paymentStatus: "awaiting_payment",
+  };
 
   let created;
   try {
     created = await prisma.preOrder.create({
-      data: {
-        number: await nextPreOrderNumber(),
-        itemId: item.id,
-        itemName: item.name,
-        itemSku: item.sku,
-        quantity,
-        unitPrice,
-        expectedArrival: item.expectedArrival,
-        customerName,
-        customerEmail,
-        customerPhone: customerPhone || null,
-        note: note || null,
-      },
+      data: { number: await nextPreOrderNumber(), ...baseData },
     });
   } catch {
     // Unique-number collision under concurrency — retry once with a random ref.
     created = await prisma.preOrder.create({
-      data: {
-        number: `PRE-${Date.now().toString(36).toUpperCase().slice(-6)}`,
-        itemId: item.id,
-        itemName: item.name,
-        itemSku: item.sku,
-        quantity,
-        unitPrice,
-        expectedArrival: item.expectedArrival,
-        customerName,
-        customerEmail,
-        customerPhone: customerPhone || null,
-        note: note || null,
-      },
+      data: { number: `PRE-${Date.now().toString(36).toUpperCase().slice(-6)}`, ...baseData },
     });
   }
 
   // Fire-and-forget customer confirmation (stored in-app; emailed if Resend set).
-  const eta = item.expectedArrival
-    ? ` Expected around ${item.expectedArrival.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`
-    : "";
   void sendOrderNotification({
     email: customerEmail,
     customerName,
     title: `Pre-order received — ${created.number}`,
-    body: `Thanks ${customerName}! We've reserved ${quantity} × ${item.name} for you. No payment is needed now — we'll contact you to confirm and invoice when it arrives.${eta}`,
+    body: `Thanks ${customerName}! Your pre-order for ${quantity} × ${item.name} is reserved. Full payment of GHS ${total.toFixed(2)} via ${PAYMENT_LABELS[paymentMethod]} is required to secure it — our team will contact you shortly with payment details. Pre-orders take up to ${PREORDER_LEAD_WORKING_DAYS} working days — expected around ${formatEtaDate(expectedArrival)}. Quote reference ${created.number} when you pay.`,
     orderNumber: created.number,
   }).catch(() => {});
 
@@ -113,7 +118,10 @@ export async function POST(req: NextRequest) {
       itemName: created.itemName,
       quantity: created.quantity,
       unitPrice: created.unitPrice,
+      total,
       expectedArrival: created.expectedArrival,
+      paymentMethod: created.paymentMethod,
+      paymentStatus: created.paymentStatus,
     },
   });
 }

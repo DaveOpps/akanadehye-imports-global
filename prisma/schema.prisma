@@ -178,6 +178,12 @@ model PreOrder {
 
   status String @default("pending")  // pending | confirmed | arrived | fulfilled | cancelled
 
+  // 100% payment is required to secure a pre-order — no gateway is wired up yet,
+  // so this mirrors checkout Orders: capture the customer's chosen method, then
+  // staff mark it paid once the money is actually received.
+  paymentMethod String @default("mobile-money")   // "mobile-money" | "card" | "bank-transfer"
+  paymentStatus String @default("awaiting_payment") // "awaiting_payment" | "paid" | "failed"
+
   @@index([status, createdAt])
   @@index([customerEmail, createdAt])
 }

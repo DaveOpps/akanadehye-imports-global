@@ -74,7 +74,7 @@ export default function ProductCard({ product }: { product: Product }) {
           {product.stock > 0 ? (
             <span>· {product.stock} in stock</span>
           ) : product.preorderable ? (
-            <span className="text-[color:var(--brand-navy)] font-semibold">· Reserve — pay on arrival</span>
+            <span className="text-[color:var(--brand-navy)] font-semibold">· Pre-order — ~45 working days</span>
           ) : (
             <span className="text-[color:var(--brand-clay)]">· Out of stock</span>
           )}

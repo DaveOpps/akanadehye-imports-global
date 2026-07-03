@@ -81,7 +81,7 @@ export default function ProductRail({
               <div className="text-[10px] mt-1 text-[color:var(--muted)]">
                 <span className="text-[color:var(--brand-gold)]">★</span> {p.rating.toFixed(1)} ·{" "}
                 {p.stock > 0 ? `${p.stock} left` : p.preorderable ? (
-                  <span className="text-[color:var(--brand-navy)] font-semibold">reserve now</span>
+                  <span className="text-[color:var(--brand-navy)] font-semibold">pre-order · ~45 days</span>
                 ) : "out of stock"}
               </div>
             </Link>
