@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { formatPrice } from "@/lib/products";
+
+const CONFIRM_PHRASE = "DELETE ALL CUSTOMERS";
 
 type Customer = {
   id: string;
@@ -16,16 +19,23 @@ type Customer = {
 };
 
 export default function CustomersPage() {
+  const { data: session } = useSession();
+  const isSuperAdmin = (session?.user as { role?: string } | undefined)?.role === "super_admin";
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showDanger, setShowDanger] = useState(false);
 
-  useEffect(() => {
+  function loadCustomers() {
+    setLoading(true);
     fetch("/api/admin/customers")
       .then((r) => r.json())
       .then((d) => { setCustomers(d.customers ?? []); setLoading(false); })
       .catch(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => { loadCustomers(); }, []);
 
   const filtered = customers.filter((c) => {
     const q = search.toLowerCase();
@@ -151,6 +161,122 @@ export default function CustomersPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Danger zone — super_admin only */}
+      {isSuperAdmin && (
+        <div className="rounded-xl border border-[color:var(--brand-clay)]/30 bg-[color:var(--brand-clay)]/[0.03] p-5">
+          <h2 className="font-bold text-[color:var(--brand-clay)] mb-1">Danger zone</h2>
+          <p className="text-sm text-[color:var(--muted)] mb-4">
+            Permanently delete every customer account and login. Order and payment history is
+            kept — only storefront accounts are removed. This cannot be undone.
+          </p>
+          <button
+            onClick={() => setShowDanger(true)}
+            disabled={customers.length === 0}
+            className="px-4 py-2 rounded-lg border border-[color:var(--brand-clay)] text-[color:var(--brand-clay)] text-sm font-semibold hover:bg-[color:var(--brand-clay)]/5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Clear all customers
+          </button>
+        </div>
+      )}
+
+      {showDanger && (
+        <ClearCustomersModal
+          count={customers.length}
+          onClose={() => setShowDanger(false)}
+          onCleared={() => { setShowDanger(false); loadCustomers(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ClearCustomersModal({
+  count,
+  onClose,
+  onCleared,
+}: {
+  count: number;
+  onClose: () => void;
+  onCleared: () => void;
+}) {
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const canConfirm = typed === CONFIRM_PHRASE;
+
+  async function handleConfirm() {
+    if (!canConfirm || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/customers", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: typed }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to clear customers.");
+        setBusy(false);
+        return;
+      }
+      onCleared();
+    } catch {
+      setError("Network error — please try again.");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden />
+      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 space-y-4">
+        <div className="flex items-start gap-3">
+          <span className="shrink-0 h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          <div>
+            <h2 className="font-bold text-[color:var(--brand-navy)]">Clear all customers?</h2>
+            <p className="text-sm text-[color:var(--muted)] mt-1">
+              This permanently deletes <strong>{count} customer account{count === 1 ? "" : "s"}</strong> and
+              their storefront logins. Orders and payments already placed are kept. This cannot be undone.
+            </p>
+          </div>
+        </div>
+
+        <label className="block">
+          <span className="block text-sm font-medium mb-1.5">
+            Type <code className="font-mono text-xs bg-[color:var(--brand-cream)] px-1.5 py-0.5 rounded">{CONFIRM_PHRASE}</code> to confirm
+          </span>
+          <input
+            autoFocus
+            value={typed}
+            onChange={(e) => { setTyped(e.target.value); setError(""); }}
+            className="input font-mono"
+            placeholder={CONFIRM_PHRASE}
+            spellCheck={false}
+          />
+        </label>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <div className="flex gap-2 justify-end pt-1">
+          <button type="button" onClick={onClose} disabled={busy} className="btn-outline text-sm">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!canConfirm || busy}
+            className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+          >
+            {busy ? "Clearing…" : `Delete ${count} customer${count === 1 ? "" : "s"}`}
+          </button>
+        </div>
       </div>
     </div>
   );
