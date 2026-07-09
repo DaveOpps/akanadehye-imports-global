@@ -237,8 +237,9 @@ export default function TaxCalculatorPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-        {/* ── Form ── */}
-        <form onSubmit={calculate} className="card space-y-4 lg:sticky lg:top-20 lg:self-start">
+        {/* ── Form + number pad ── */}
+        <div className="space-y-6 lg:sticky lg:top-20 lg:self-start">
+        <form onSubmit={calculate} className="card space-y-4">
           <h2 className="font-bold text-base text-[color:var(--brand-navy)]">Product & shipment</h2>
 
           <Field label="What is the product?">
@@ -321,6 +322,9 @@ export default function TaxCalculatorPage() {
             {calculating ? "Estimating…" : "Calculate taxes"}
           </button>
         </form>
+
+        <NumberPad onUseValue={(v) => setValue(v)} />
+        </div>
 
         {/* ── Results + chat ── */}
         <div className="space-y-6 min-w-0">
@@ -520,5 +524,100 @@ function Field({ label, children }: { label: React.ReactNode; children: React.Re
       <span className="block text-sm font-medium mb-1.5">{label}</span>
       {children}
     </label>
+  );
+}
+
+/** A basic on-screen calculator for quick math while filling the form. */
+function NumberPad({ onUseValue }: { onUseValue: (v: string) => void }) {
+  const [display, setDisplay] = useState("0");
+  const [prev, setPrev] = useState<number | null>(null);
+  const [op, setOp] = useState<string | null>(null);
+  const [overwrite, setOverwrite] = useState(true);
+
+  function inputDigit(d: string) {
+    setDisplay((cur) => {
+      if (overwrite) return d;
+      if (cur === "0") return d;
+      return cur.replace(/,/g, "").length < 15 ? cur + d : cur;
+    });
+    if (overwrite) setOverwrite(false);
+  }
+  function inputDot() {
+    if (overwrite) { setDisplay("0."); setOverwrite(false); return; }
+    setDisplay((cur) => (cur.includes(".") ? cur : cur + "."));
+  }
+  function apply(a: number, b: number, o: string): number {
+    if (o === "+") return a + b;
+    if (o === "−") return a - b;
+    if (o === "×") return a * b;
+    if (o === "÷") return b === 0 ? NaN : a / b;
+    return b;
+  }
+  function chooseOp(nextOp: string) {
+    const val = parseFloat(display);
+    if (prev !== null && op && !overwrite) {
+      const r = apply(prev, val, op);
+      setPrev(r);
+      setDisplay(String(r));
+    } else {
+      setPrev(val);
+    }
+    setOp(nextOp);
+    setOverwrite(true);
+  }
+  function equals() {
+    if (prev === null || !op) return;
+    const r = apply(prev, parseFloat(display), op);
+    setDisplay(Number.isFinite(r) ? String(r) : "Error");
+    setPrev(null);
+    setOp(null);
+    setOverwrite(true);
+  }
+  function clearAll() { setDisplay("0"); setPrev(null); setOp(null); setOverwrite(true); }
+  function backspace() {
+    setDisplay((c) => (overwrite || c.length <= 1 ? "0" : c.slice(0, -1)));
+  }
+
+  const valid = display !== "Error";
+
+  const opBtn = "rounded-lg bg-[color:var(--brand-cream)] text-[color:var(--brand-navy)] font-bold py-3 hover:brightness-95 transition";
+  const numBtn = "rounded-lg bg-white border border-[color:var(--border)] text-[color:var(--brand-navy)] font-semibold py-3 hover:bg-[color:var(--brand-cream)] transition";
+
+  return (
+    <div className="card space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-sm text-[color:var(--brand-navy)]">Quick calculator</h3>
+        <span className="text-[10px] text-[color:var(--muted)]">{op ? `${prev ?? ""} ${op}` : " "}</span>
+      </div>
+      <div className="rounded-lg bg-[color:var(--brand-navy)] text-white px-3 py-3 text-right font-mono text-xl overflow-x-auto">
+        {valid ? Number(display).toLocaleString(undefined, { maximumFractionDigits: 6 }) : "Error"}
+      </div>
+      <div className="grid grid-cols-4 gap-2 text-sm">
+        <button type="button" onClick={clearAll} className="rounded-lg bg-[color:var(--brand-clay)]/10 text-[color:var(--brand-clay)] font-bold py-3 hover:bg-[color:var(--brand-clay)]/20 transition">C</button>
+        <button type="button" onClick={backspace} className={opBtn}>⌫</button>
+        <button type="button" onClick={() => chooseOp("÷")} className={opBtn}>÷</button>
+        <button type="button" onClick={() => chooseOp("×")} className={opBtn}>×</button>
+
+        {["7", "8", "9"].map((d) => <button key={d} type="button" onClick={() => inputDigit(d)} className={numBtn}>{d}</button>)}
+        <button type="button" onClick={() => chooseOp("−")} className={opBtn}>−</button>
+
+        {["4", "5", "6"].map((d) => <button key={d} type="button" onClick={() => inputDigit(d)} className={numBtn}>{d}</button>)}
+        <button type="button" onClick={() => chooseOp("+")} className={opBtn}>+</button>
+
+        {["1", "2", "3"].map((d) => <button key={d} type="button" onClick={() => inputDigit(d)} className={numBtn}>{d}</button>)}
+        <button type="button" onClick={equals} className="row-span-2 rounded-lg bg-[color:var(--brand-navy)] text-white font-bold hover:brightness-110 transition">=</button>
+
+        <button type="button" onClick={() => inputDigit("0")} className={`${numBtn} col-span-2`}>0</button>
+        <button type="button" onClick={inputDot} className={numBtn}>.</button>
+      </div>
+      <button
+        type="button"
+        onClick={() => valid && onUseValue(String(Number(display.replace(/,/g, ""))))}
+        disabled={!valid}
+        className="w-full text-xs font-bold py-2 rounded-lg border border-[color:var(--brand-navy)] text-[color:var(--brand-navy)] hover:bg-[color:var(--brand-cream)] disabled:opacity-40 transition"
+      >
+        ↑ Use as product value
+      </button>
+    </div>
   );
 }
