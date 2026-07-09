@@ -72,6 +72,28 @@ export default function TaxCalculatorPage() {
   const [history, setHistory] = useState<SavedEstimate[] | null>(null);
   const [showHistory, setShowHistory] = useState(false);
 
+  // live USD->GHS rate
+  const [fx, setFx] = useState<{ rate: number; asOf: string | null; source: string; stale?: boolean } | null>(null);
+  const [fxLoading, setFxLoading] = useState(false);
+  const fxFromUrl = useRef(false);
+
+  async function loadFx(apply: boolean) {
+    setFxLoading(true);
+    try {
+      const res = await fetch("/api/admin/fx-rate", { cache: "no-store" });
+      const data = await res.json();
+      if (data.ok) {
+        setFx({ rate: data.rate, asOf: data.asOf, source: data.source, stale: data.stale });
+        if (apply) setExchangeRate(String(data.rate));
+      }
+    } catch { /* keep manual rate */ }
+    finally { setFxLoading(false); }
+  }
+  useEffect(() => {
+    if (isSuperAdmin) loadFx(!fxFromUrl.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuperAdmin]);
+
   // Prefill from a Sourcing order (?product=&value=&currency=&fx=&qty=&origin=&category=)
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -81,7 +103,7 @@ export default function TaxCalculatorPage() {
     if (p.get("origin")) setOriginCountry(p.get("origin")!);
     if (p.get("value")) setValue(p.get("value")!);
     if (p.get("currency") === "GHS" || p.get("currency") === "USD") setCurrency(p.get("currency") as "USD" | "GHS");
-    if (p.get("fx")) setExchangeRate(p.get("fx")!);
+    if (p.get("fx")) { setExchangeRate(p.get("fx")!); fxFromUrl.current = true; }
     if (p.get("qty")) setQuantity(p.get("qty")!);
   }, []);
 
@@ -249,7 +271,34 @@ export default function TaxCalculatorPage() {
 
           {currency === "USD" && (
             <Field label="Exchange rate (GHS per USD)">
-              <input type="number" step="0.01" min="1" value={exchangeRate} onChange={(e) => setExchangeRate(e.target.value)} className="input" />
+              <input type="number" step="0.0001" min="1" value={exchangeRate} onChange={(e) => setExchangeRate(e.target.value)} className="input" />
+              <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px]">
+                {fxLoading ? (
+                  <span className="text-[color:var(--muted)]">Fetching live rate…</span>
+                ) : fx ? (
+                  <span className="text-[color:var(--muted)]">
+                    {fx.source === "fallback" || fx.stale ? "⚠ " : "● "}
+                    Live: 1 USD = <strong className="text-[color:var(--brand-navy)]">{fx.rate.toFixed(4)} GHS</strong>
+                    {fx.source === "fallback" ? " (offline fallback)" : fx.stale ? " (cached)" : ""}
+                    {fx.asOf ? ` · ${new Date(fx.asOf).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}
+                  </span>
+                ) : (
+                  <span className="text-[color:var(--muted)]">Manual rate</span>
+                )}
+                <div className="flex items-center gap-2 shrink-0">
+                  {fx && parseFloat(exchangeRate) !== Number(fx.rate.toFixed(4)) && (
+                    <button type="button" onClick={() => setExchangeRate(fx.rate.toFixed(4))} className="font-semibold text-[color:var(--brand-navy)] hover:underline">
+                      Use live
+                    </button>
+                  )}
+                  <button type="button" onClick={() => loadFx(true)} className="font-semibold text-[color:var(--brand-navy)] hover:underline" disabled={fxLoading}>
+                    Refresh
+                  </button>
+                </div>
+              </div>
+              <p className="text-[10px] text-[color:var(--muted)] mt-1">
+                Mid-market rate — banks/Customs may apply a spread. Adjust if you have the actual clearing rate.
+              </p>
             </Field>
           )}
 
