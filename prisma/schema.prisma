@@ -214,6 +214,7 @@ model TaxEstimate {
   effectiveTaxRatePercent Float
   lineItems               String  // JSON-encoded TaxLineItem[]
   assumptions             String?
+  imageUrl                String? // base64 data-URL of the primary product photo
 
   @@index([createdAt])
 }

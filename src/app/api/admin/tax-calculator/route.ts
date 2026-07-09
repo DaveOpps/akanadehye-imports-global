@@ -18,6 +18,8 @@ const calcSchema = z.object({
   freight: z.number().min(0).max(1_000_000_000).optional(),
   insurance: z.number().min(0).max(1_000_000_000).optional(),
   quantity: z.number().int().min(1).max(1_000_000).optional(),
+  // Base64 product photos (data URLs). Capped so the request body stays sane.
+  images: z.array(z.string().max(1_500_000)).max(6).optional(),
 });
 
 const chatSchema = z.object({
@@ -124,6 +126,7 @@ export async function POST(req: NextRequest) {
         effectiveTaxRatePercent: result.effectiveTaxRatePercent,
         lineItems: JSON.stringify(result.lineItems),
         assumptions: result.assumptions ?? null,
+        imageUrl: input.images?.[0] ?? null,
       },
     });
     return NextResponse.json({ ok: true, id: saved.id });

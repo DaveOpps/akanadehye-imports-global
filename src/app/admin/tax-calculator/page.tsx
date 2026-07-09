@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import PageHeader from "@/components/PageHeader";
+import ImageUploader from "@/components/ImageUploader";
 import { formatPrice } from "@/lib/products";
 
 type CalcInput = {
@@ -15,6 +16,7 @@ type CalcInput = {
   freight?: number;
   insurance?: number;
   quantity?: number;
+  images?: string[];
 };
 
 type SavedEstimate = {
@@ -28,6 +30,7 @@ type SavedEstimate = {
   totalTaxesGhs: number;
   totalLandedCostGhs: number;
   effectiveTaxRatePercent: number;
+  imageUrl: string | null;
 };
 
 type LineItem = { label: string; ratePercent: number | null; amountGhs: number; note?: string };
@@ -60,6 +63,7 @@ export default function TaxCalculatorPage() {
   const [freight, setFreight] = useState("");
   const [insurance, setInsurance] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [images, setImages] = useState<string[]>([]);
 
   const [calculating, setCalculating] = useState(false);
   const [error, setError] = useState("");
@@ -165,6 +169,7 @@ export default function TaxCalculatorPage() {
       freight: freight ? parseFloat(freight) : undefined,
       insurance: insurance ? parseFloat(insurance) : undefined,
       quantity: quantity ? parseInt(quantity) : undefined,
+      images: images.length ? images : undefined,
     };
     try {
       const res = await fetch("/api/admin/tax-calculator", {
@@ -248,6 +253,13 @@ export default function TaxCalculatorPage() {
               rows={2} className="input resize-y" placeholder="e.g. Corn sheller machine, diesel powered"
             />
           </Field>
+
+          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--brand-cream)]/30 p-3">
+            <ImageUploader value={images} onChange={setImages} label="Product photos (optional)" />
+            <p className="mt-2 text-[11px] text-[color:var(--muted)]">
+              📷 Add a photo and the assistant will <strong>look at it</strong> to classify the goods (HS code) more accurately.
+            </p>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Category (optional)">
@@ -492,9 +504,21 @@ export default function TaxCalculatorPage() {
                         {history.map((e) => (
                           <tr key={e.id} className="border-b border-[color:var(--border)]/50 last:border-0">
                             <td className="py-2">
-                              <div className="font-medium text-[color:var(--brand-navy)] max-w-[200px] truncate" title={e.productDescription}>{e.productDescription}</div>
-                              <div className="text-[11px] text-[color:var(--muted)]">
-                                {new Date(e.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} · {e.originCountry}
+                              <div className="flex items-center gap-2.5">
+                                {e.imageUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={e.imageUrl} alt="" className="h-9 w-9 shrink-0 rounded-md object-cover border border-[color:var(--border)]" />
+                                ) : (
+                                  <span className="h-9 w-9 shrink-0 rounded-md bg-[color:var(--brand-cream)] flex items-center justify-center text-[color:var(--muted)]">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2"/><path d="M3 15l4-4 4 4 3-3 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  </span>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="font-medium text-[color:var(--brand-navy)] max-w-[180px] truncate" title={e.productDescription}>{e.productDescription}</div>
+                                  <div className="text-[11px] text-[color:var(--muted)]">
+                                    {new Date(e.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} · {e.originCountry}
+                                  </div>
+                                </div>
                               </div>
                             </td>
                             <td className="py-2 font-mono text-[11px] text-[color:var(--muted)]">{e.hsCodeGuess}</td>

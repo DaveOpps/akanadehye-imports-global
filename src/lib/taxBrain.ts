@@ -23,7 +23,20 @@ export type TaxCalcInput = {
   freight?: number; // same currency as value
   insurance?: number; // same currency as value
   quantity?: number;
+  images?: string[]; // base64 data-URLs of product photos (used for vision classification)
 };
+
+const ALLOWED_MEDIA = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
+type AllowedMedia = (typeof ALLOWED_MEDIA)[number];
+
+/** Split a data-URL into an Anthropic image source, or null if unusable. */
+function parseDataUrl(dataUrl: string): { media_type: AllowedMedia; data: string } | null {
+  const m = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+  if (!m) return null;
+  const media = m[1] as AllowedMedia;
+  if (!ALLOWED_MEDIA.includes(media)) return null;
+  return { media_type: media, data: m[2] };
+}
 
 export type TaxLineItem = {
   label: string;
@@ -64,6 +77,7 @@ const SYSTEM_PROMPT = [
   "Also mention Ghana Ports (GPHA) / shipping-line / terminal handling only if asked — do not add them to the tax total.",
   "",
   "Rules:",
+  "- If product photo(s) are provided, examine them carefully to identify the goods (material, function, whether finished/consumer vs. industrial/raw). Let the photo guide the HS classification — it overrides a vague text description. Mention in your assumptions what the photo shows.",
   "- Work entirely in GHS. If given USD, convert using the provided exchange rate.",
   "- CIF value = product value + freight + insurance (convert all to GHS).",
   "- Make totals internally consistent: totalTaxes must equal the sum of the line-item amounts, and landed cost must equal CIF + totalTaxes.",
@@ -129,13 +143,23 @@ export async function computeTaxBreakdown(input: TaxCalcInput): Promise<TaxBreak
 
   try {
     const client = new Anthropic({ apiKey });
+
+    // Attach up to 4 product photos as vision blocks so Claude can classify
+    // from what it actually sees.
+    const content: Anthropic.ContentBlockParam[] = [];
+    for (const img of (input.images ?? []).slice(0, 4)) {
+      const parsed = parseDataUrl(img);
+      if (parsed) content.push({ type: "image", source: { type: "base64", ...parsed } });
+    }
+    content.push({ type: "text", text: buildUserPrompt(input) });
+
     const msg = await client.messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
       system: SYSTEM_PROMPT,
       tools: [TAX_TOOL],
       tool_choice: { type: "tool", name: "report_tax_breakdown" },
-      messages: [{ role: "user", content: buildUserPrompt(input) }],
+      messages: [{ role: "user", content }],
     });
 
     const toolUse = msg.content.find(
