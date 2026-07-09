@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
   usePayments,
   useInvoices,
@@ -90,6 +91,23 @@ export default function FinanceHub() {
   const invoices = useInvoices();
   const sourcing = useSourcing();
   const orders = useOrders();
+
+  const { data: session } = useSession();
+  const isSuperAdmin = (session?.user as { role?: string } | undefined)?.role === "super_admin";
+
+  const [taxSummary, setTaxSummary] = useState<{ count: number; taxes: number; landed: number } | null>(null);
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    fetch("/api/admin/tax-calculator", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.estimates) return;
+        const taxes = d.estimates.reduce((n: number, e: { totalTaxesGhs: number }) => n + e.totalTaxesGhs, 0);
+        const landed = d.estimates.reduce((n: number, e: { totalLandedCostGhs: number }) => n + e.totalLandedCostGhs, 0);
+        setTaxSummary({ count: d.estimates.length, taxes, landed });
+      })
+      .catch(() => {});
+  }, [isSuperAdmin]);
 
   const [tab, setTab] = useState<Tab>("summary");
   const [range, setRange] = useState<"7" | "30" | "90" | "all">("30");
@@ -282,6 +300,29 @@ export default function FinanceHub() {
           accent={outstandingAmount > 0 ? "amber" : undefined}
         />
       </div>
+
+      {/* Projected import-tax liability — super_admin only */}
+      {isSuperAdmin && taxSummary && taxSummary.count > 0 && (
+        <Link
+          href="/admin/tax-calculator"
+          className="block mb-6 rounded-xl border border-[color:var(--brand-gold)]/40 bg-gradient-to-r from-[color:var(--brand-navy)] to-[color:var(--brand-navy-soft)] text-white p-5 hover:brightness-110 transition"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-[color:var(--brand-gold)]">
+                Projected import-tax liability
+              </div>
+              <div className="mt-1 text-3xl font-bold">GH₵ {fmt(taxSummary.taxes)}</div>
+              <div className="text-xs text-white/70 mt-0.5">
+                Across {taxSummary.count} saved estimate{taxSummary.count !== 1 ? "s" : ""} · total landed cost GH₵ {fmt(taxSummary.landed)}
+              </div>
+            </div>
+            <span className="text-xs font-bold bg-white/15 hover:bg-white/25 px-3 py-1.5 rounded-full">
+              Open Tax Calculator →
+            </span>
+          </div>
+        </Link>
+      )}
 
       {/* Tabs */}
       <div className="mb-5 flex gap-1 border-b border-[color:var(--border)]">
