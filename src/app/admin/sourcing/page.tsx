@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useSourcing, formatGHS, formatUSD, formatDate, uid, type SourcingOrder } from "@/lib/store";
 import PageHeader from "@/components/PageHeader";
 
@@ -9,6 +11,8 @@ const FX_RATE_DEFAULT = 15.2; // demo USD → GHS rate
 const STATUS_FLOW: SourcingOrder["status"][] = ["requested", "quoted", "purchased", "shipping", "arrived"];
 
 export default function SourcingPage() {
+  const { data: session } = useSession();
+  const isSuperAdmin = (session?.user as { role?: string } | undefined)?.role === "super_admin";
   const { items, add, update, remove, hydrated } = useSourcing();
   const [productLink, setProductLink] = useState("");
   const [productName, setProductName] = useState("");
@@ -153,7 +157,7 @@ export default function SourcingPage() {
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap items-center">
                       {o.status !== "arrived" && (
                         <button
                           onClick={() => advance(o)}
@@ -161,6 +165,15 @@ export default function SourcingPage() {
                         >
                           Advance status →
                         </button>
+                      )}
+                      {isSuperAdmin && (
+                        <Link
+                          href={`/admin/tax-calculator?product=${encodeURIComponent(o.productName)}&value=${o.estCostUsd}&currency=USD&fx=${o.fxRate}&qty=${o.quantity}&origin=China`}
+                          className="text-xs font-semibold text-[color:var(--brand-gold)] hover:underline"
+                          title="Estimate import taxes for this product"
+                        >
+                          Estimate taxes →
+                        </Link>
                       )}
                       <button
                         onClick={() => {

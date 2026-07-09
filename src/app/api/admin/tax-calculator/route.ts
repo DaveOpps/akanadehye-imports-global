@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import { hit } from "@/lib/rateLimit";
 import { computeTaxBreakdown, taxChat, type TaxCalcInput, type ChatMsg, type TaxBreakdown } from "@/lib/taxBrain";
 
@@ -25,13 +26,51 @@ const chatSchema = z.object({
   context: z.any().optional(),
 });
 
-const bodySchema = z.union([calcSchema, chatSchema]);
+const lineItemSchema = z.object({
+  label: z.string(),
+  ratePercent: z.number().nullable().optional(),
+  amountGhs: z.number(),
+  note: z.string().optional(),
+});
 
-// POST /api/admin/tax-calculator — super_admin only. Estimates Ghana import
-// taxes (mode: "calculate") or answers follow-up questions (mode: "chat").
-export async function POST(req: NextRequest) {
+const saveSchema = z.object({
+  mode: z.literal("save"),
+  input: calcSchema.omit({ mode: true }),
+  result: z.object({
+    hsCodeGuess: z.string(),
+    customsValueGhs: z.number(),
+    totalTaxesGhs: z.number(),
+    totalLandedCostGhs: z.number(),
+    effectiveTaxRatePercent: z.number(),
+    lineItems: z.array(lineItemSchema),
+    assumptions: z.string().optional(),
+  }),
+});
+
+const bodySchema = z.union([calcSchema, chatSchema, saveSchema]);
+
+async function requireSuperAdmin() {
   const session = await auth();
-  const user = session?.user as { role?: string; id?: string } | undefined;
+  return session?.user as { role?: string; id?: string; email?: string } | undefined;
+}
+
+// GET /api/admin/tax-calculator — super_admin: list saved estimates
+export async function GET() {
+  const user = await requireSuperAdmin();
+  if (user?.role !== "super_admin") {
+    return NextResponse.json({ ok: false, error: "Restricted to the super admin." }, { status: 403 });
+  }
+  const estimates = await prisma.taxEstimate.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
+  return NextResponse.json({
+    ok: true,
+    estimates: estimates.map((e) => ({ ...e, lineItems: JSON.parse(e.lineItems) })),
+  });
+}
+
+// POST /api/admin/tax-calculator — super_admin only.
+// modes: "calculate" | "chat" | "save"
+export async function POST(req: NextRequest) {
+  const user = await requireSuperAdmin();
   if (user?.role !== "super_admin") {
     return NextResponse.json({ ok: false, error: "This calculator is restricted to the super admin." }, { status: 403 });
   }
@@ -62,6 +101,32 @@ export async function POST(req: NextRequest) {
     }
     const result = await computeTaxBreakdown(input as TaxCalcInput);
     return NextResponse.json(result, { status: result.ok ? 200 : 502 });
+  }
+
+  if (parsed.data.mode === "save") {
+    const { input, result } = parsed.data;
+    const saved = await prisma.taxEstimate.create({
+      data: {
+        createdBy: user.email ?? null,
+        productDescription: input.productDescription,
+        category: input.category ?? null,
+        originCountry: input.originCountry,
+        inputValue: input.value,
+        inputCurrency: input.currency,
+        exchangeRate: input.exchangeRate ?? null,
+        freight: input.freight ?? null,
+        insurance: input.insurance ?? null,
+        quantity: input.quantity ?? null,
+        hsCodeGuess: result.hsCodeGuess,
+        customsValueGhs: result.customsValueGhs,
+        totalTaxesGhs: result.totalTaxesGhs,
+        totalLandedCostGhs: result.totalLandedCostGhs,
+        effectiveTaxRatePercent: result.effectiveTaxRatePercent,
+        lineItems: JSON.stringify(result.lineItems),
+        assumptions: result.assumptions ?? null,
+      },
+    });
+    return NextResponse.json({ ok: true, id: saved.id });
   }
 
   // chat

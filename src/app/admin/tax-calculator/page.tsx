@@ -1,9 +1,34 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import PageHeader from "@/components/PageHeader";
 import { formatPrice } from "@/lib/products";
+
+type CalcInput = {
+  productDescription: string;
+  category?: string;
+  originCountry: string;
+  value: number;
+  currency: "USD" | "GHS";
+  exchangeRate?: number;
+  freight?: number;
+  insurance?: number;
+  quantity?: number;
+};
+
+type SavedEstimate = {
+  id: string;
+  createdAt: string;
+  createdBy: string | null;
+  productDescription: string;
+  originCountry: string;
+  hsCodeGuess: string;
+  customsValueGhs: number;
+  totalTaxesGhs: number;
+  totalLandedCostGhs: number;
+  effectiveTaxRatePercent: number;
+};
 
 type LineItem = { label: string; ratePercent: number | null; amountGhs: number; note?: string };
 type Breakdown = {
@@ -39,6 +64,63 @@ export default function TaxCalculatorPage() {
   const [calculating, setCalculating] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<Breakdown | null>(null);
+  const [lastInput, setLastInput] = useState<CalcInput | null>(null);
+
+  // saved-estimate history
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState("");
+  const [history, setHistory] = useState<SavedEstimate[] | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Prefill from a Sourcing order (?product=&value=&currency=&fx=&qty=&origin=&category=)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("product")) setProductDescription(p.get("product")!);
+    if (p.get("category")) setCategory(p.get("category")!);
+    if (p.get("origin")) setOriginCountry(p.get("origin")!);
+    if (p.get("value")) setValue(p.get("value")!);
+    if (p.get("currency") === "GHS" || p.get("currency") === "USD") setCurrency(p.get("currency") as "USD" | "GHS");
+    if (p.get("fx")) setExchangeRate(p.get("fx")!);
+    if (p.get("qty")) setQuantity(p.get("qty")!);
+  }, []);
+
+  async function loadHistory() {
+    try {
+      const res = await fetch("/api/admin/tax-calculator", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setHistory(data.estimates ?? []);
+    } catch { /* ignore */ }
+  }
+  useEffect(() => { if (isSuperAdmin) loadHistory(); }, [isSuperAdmin]);
+
+  async function saveEstimate() {
+    if (!result || !lastInput) return;
+    setSaving(true);
+    setSavedMsg("");
+    try {
+      const res = await fetch("/api/admin/tax-calculator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "save", input: lastInput, result }),
+      });
+      const data = await res.json();
+      if (data.ok) { setSavedMsg("Saved ✓"); loadHistory(); }
+      else setSavedMsg(data.error ?? "Save failed");
+    } catch {
+      setSavedMsg("Save failed");
+    } finally {
+      setSaving(false);
+      setTimeout(() => setSavedMsg(""), 2500);
+    }
+  }
+
+  async function deleteEstimate(id: string) {
+    setHistory((prev) => prev?.filter((e) => e.id !== id) ?? prev);
+    try { await fetch(`/api/admin/tax-calculator/${id}`, { method: "DELETE" }); }
+    catch { loadHistory(); }
+  }
 
   // chat
   const [chat, setChat] = useState<ChatMsg[]>([]);
@@ -50,26 +132,27 @@ export default function TaxCalculatorPage() {
     e.preventDefault();
     setCalculating(true);
     setError("");
+    setSavedMsg("");
+    const input: CalcInput = {
+      productDescription: productDescription.trim(),
+      category: category.trim() || undefined,
+      originCountry: originCountry.trim(),
+      value: parseFloat(value) || 0,
+      currency,
+      exchangeRate: currency === "USD" ? parseFloat(exchangeRate) || undefined : undefined,
+      freight: freight ? parseFloat(freight) : undefined,
+      insurance: insurance ? parseFloat(insurance) : undefined,
+      quantity: quantity ? parseInt(quantity) : undefined,
+    };
     try {
       const res = await fetch("/api/admin/tax-calculator", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "calculate",
-          productDescription: productDescription.trim(),
-          category: category.trim() || undefined,
-          originCountry: originCountry.trim(),
-          value: parseFloat(value) || 0,
-          currency,
-          exchangeRate: currency === "USD" ? parseFloat(exchangeRate) || undefined : undefined,
-          freight: freight ? parseFloat(freight) : undefined,
-          insurance: insurance ? parseFloat(insurance) : undefined,
-          quantity: quantity ? parseInt(quantity) : undefined,
-        }),
+        body: JSON.stringify({ mode: "calculate", ...input }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) setError(data.error ?? "Calculation failed.");
-      else setResult(data as Breakdown);
+      else { setResult(data as Breakdown); setLastInput(input); }
     } catch {
       setError("Network error — please try again.");
     } finally {
@@ -219,9 +302,18 @@ export default function TaxCalculatorPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="chip">HS guess: <strong className="ml-1 font-mono">{result.hsCodeGuess}</strong></span>
                 {result.exchangeRateUsed && <span className="chip">FX: {result.exchangeRateUsed} GHS/USD</span>}
+                <button
+                  type="button"
+                  onClick={saveEstimate}
+                  disabled={saving}
+                  className="ml-auto inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-[color:var(--brand-navy)] text-[color:var(--brand-navy)] hover:bg-[color:var(--brand-cream)] disabled:opacity-50 transition"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2zM17 21v-8H7v8M7 3v5h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  {savedMsg || (saving ? "Saving…" : "Save estimate")}
+                </button>
               </div>
 
               {/* Line items */}
@@ -308,6 +400,64 @@ export default function TaxCalculatorPage() {
                 Send
               </button>
             </form>
+          </div>
+
+          {/* Saved estimates */}
+          <div className="card">
+            <button
+              type="button"
+              onClick={() => setShowHistory((v) => !v)}
+              className="w-full flex items-center justify-between"
+            >
+              <h3 className="font-bold text-sm text-[color:var(--brand-navy)]">
+                Saved estimates {history && history.length > 0 && <span className="text-[color:var(--muted)] font-normal">({history.length})</span>}
+              </h3>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={`transition ${showHistory ? "rotate-180" : ""}`}>
+                <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {showHistory && (
+              <div className="mt-3">
+                {!history ? (
+                  <p className="text-sm text-[color:var(--muted)]">Loading…</p>
+                ) : history.length === 0 ? (
+                  <p className="text-sm text-[color:var(--muted)] py-3 text-center">No saved estimates yet. Calculate one, then hit &ldquo;Save estimate&rdquo;.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left text-[10px] uppercase tracking-wider text-[color:var(--muted)] border-b border-[color:var(--border)]">
+                          <th className="pb-2 font-semibold">Product · Date</th>
+                          <th className="pb-2 font-semibold">HS</th>
+                          <th className="pb-2 font-semibold text-right">Taxes</th>
+                          <th className="pb-2 font-semibold text-right">Landed</th>
+                          <th className="pb-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {history.map((e) => (
+                          <tr key={e.id} className="border-b border-[color:var(--border)]/50 last:border-0">
+                            <td className="py-2">
+                              <div className="font-medium text-[color:var(--brand-navy)] max-w-[200px] truncate" title={e.productDescription}>{e.productDescription}</div>
+                              <div className="text-[11px] text-[color:var(--muted)]">
+                                {new Date(e.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} · {e.originCountry}
+                              </div>
+                            </td>
+                            <td className="py-2 font-mono text-[11px] text-[color:var(--muted)]">{e.hsCodeGuess}</td>
+                            <td className="py-2 text-right font-semibold tabular-nums">{formatPrice(e.totalTaxesGhs)}</td>
+                            <td className="py-2 text-right tabular-nums">{formatPrice(e.totalLandedCostGhs)}</td>
+                            <td className="py-2 text-right">
+                              <button onClick={() => deleteEstimate(e.id)} className="text-[11px] font-semibold text-red-600 hover:text-red-800">Delete</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

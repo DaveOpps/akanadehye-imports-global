@@ -188,6 +188,36 @@ model PreOrder {
   @@index([customerEmail, createdAt])
 }
 
+// ---------- Import tax estimates (super-admin calculator history) ----------
+
+model TaxEstimate {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  createdBy String?  // super admin email
+
+  // Input snapshot
+  productDescription String
+  category           String?
+  originCountry      String
+  inputValue         Float
+  inputCurrency      String   // "USD" | "GHS"
+  exchangeRate       Float?
+  freight            Float?
+  insurance          Float?
+  quantity           Int?
+
+  // Result snapshot (from the Claude engine)
+  hsCodeGuess             String
+  customsValueGhs         Float
+  totalTaxesGhs           Float
+  totalLandedCostGhs      Float
+  effectiveTaxRatePercent Float
+  lineItems               String  // JSON-encoded TaxLineItem[]
+  assumptions             String?
+
+  @@index([createdAt])
+}
+
 // ---------- Order notifications ----------
 
 model Notification {
