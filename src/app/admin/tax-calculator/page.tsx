@@ -244,8 +244,13 @@ export default function TaxCalculatorPage() {
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         {/* ── Form + number pad ── */}
         <div className="space-y-6 lg:sticky lg:top-20 lg:self-start">
-        <form onSubmit={calculate} className="card space-y-4">
-          <h2 className="font-bold text-base text-[color:var(--brand-navy)]">Product & shipment</h2>
+        <form onSubmit={calculate} className="card space-y-4 border-t-4 border-t-[color:var(--brand-gold)]">
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow-sm">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 8l9-5 9 5v8l-9 5-9-5V8zM3 8l9 5m0 0l9-5m-9 5v9" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/></svg>
+            </span>
+            <h2 className="font-bold text-base text-[color:var(--brand-navy)]">Product &amp; shipment</h2>
+          </div>
 
           <Field label="What is the product?">
             <textarea
@@ -342,7 +347,7 @@ export default function TaxCalculatorPage() {
         <div className="space-y-6 min-w-0">
           {!result ? (
             <div className="card text-center py-12">
-              <div className="mx-auto h-12 w-12 rounded-full bg-[color:var(--brand-cream)] flex items-center justify-center text-[color:var(--brand-navy)] mb-3">
+              <div className="mx-auto h-12 w-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white mb-3 shadow-sm">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" strokeWidth="2" />
                   <path d="M8 6h8M8 10h2M8 14h2M14 10h2M14 14h2M8 18h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -353,18 +358,12 @@ export default function TaxCalculatorPage() {
             </div>
           ) : (
             <div className="card space-y-5">
-              {/* Headline */}
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-[color:var(--muted)] font-semibold">Total taxes & levies</div>
-                  <div className="text-3xl font-bold text-[color:var(--brand-navy)]">{formatPrice(result.totalTaxesGhs)}</div>
-                  <div className="text-xs text-[color:var(--muted)] mt-0.5">≈ {result.effectiveTaxRatePercent.toFixed(1)}% of CIF value</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[10px] uppercase tracking-wider text-[color:var(--muted)] font-semibold">Total landed cost</div>
-                  <div className="text-2xl font-bold text-[color:var(--brand-gold)]">{formatPrice(result.totalLandedCostGhs)}</div>
-                  <div className="text-xs text-[color:var(--muted)] mt-0.5">CIF {formatPrice(result.customsValueGhs)}</div>
-                </div>
+              {/* Colourful stat tiles */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <StatTile gradient="from-sky-500 to-blue-600" label="CIF value" value={formatPrice(result.customsValueGhs)} sub="cost + freight + ins." />
+                <StatTile gradient="from-rose-500 to-red-600" label="Total taxes" value={formatPrice(result.totalTaxesGhs)} sub={`${result.effectiveTaxRatePercent.toFixed(1)}% of CIF`} />
+                <StatTile gradient="from-emerald-500 to-teal-600" label="Effective rate" value={`${result.effectiveTaxRatePercent.toFixed(1)}%`} sub="taxes ÷ CIF" />
+                <StatTile gradient="from-amber-400 to-yellow-500" dark label="Landed cost" value={formatPrice(result.totalLandedCostGhs)} sub="all-in total" />
               </div>
 
               <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -393,21 +392,29 @@ export default function TaxCalculatorPage() {
                   </thead>
                   <tbody>
                     {result.lineItems.map((li, i) => (
-                      <tr key={i} className="border-b border-[color:var(--border)]/50 last:border-0">
+                      <tr key={i} className="border-b border-[color:var(--border)]/50 last:border-0 hover:bg-[color:var(--brand-cream)]/40 transition">
                         <td className="py-2">
-                          <div className="font-medium text-[color:var(--brand-navy)]">{li.label}</div>
-                          {li.note && <div className="text-[11px] text-[color:var(--muted)]">{li.note}</div>}
+                          <div className="flex items-center gap-2 font-medium text-[color:var(--brand-navy)]">
+                            <span className="inline-block h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: DOT_COLORS[i % DOT_COLORS.length] }} />
+                            {li.label}
+                          </div>
+                          {li.note && <div className="text-[11px] text-[color:var(--muted)] pl-4">{li.note}</div>}
                         </td>
-                        <td className="py-2 text-right text-[color:var(--muted)] tabular-nums">
-                          {li.ratePercent != null ? `${li.ratePercent}%` : "—"}
+                        <td className="py-2 text-right tabular-nums">
+                          {li.ratePercent != null ? (
+                            <span className="inline-block rounded-full bg-[color:var(--brand-cream)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--brand-navy)]">{li.ratePercent}%</span>
+                          ) : <span className="text-[color:var(--muted)]">—</span>}
                         </td>
                         <td className="py-2 text-right font-semibold tabular-nums">{formatPrice(li.amountGhs)}</td>
                       </tr>
                     ))}
-                    <tr className="border-t-2 border-[color:var(--border)]">
-                      <td className="pt-2 font-bold">Total taxes</td>
-                      <td></td>
-                      <td className="pt-2 text-right font-bold text-[color:var(--brand-navy)] tabular-nums">{formatPrice(result.totalTaxesGhs)}</td>
+                    <tr>
+                      <td colSpan={3} className="pt-2">
+                        <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-[color:var(--brand-navy)] to-[color:var(--brand-navy-soft)] text-white px-3.5 py-2.5">
+                          <span className="font-bold">Total taxes &amp; levies</span>
+                          <span className="font-bold text-[color:var(--brand-gold)] tabular-nums">{formatPrice(result.totalTaxesGhs)}</span>
+                        </div>
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -423,9 +430,9 @@ export default function TaxCalculatorPage() {
           )}
 
           {/* Chat / brain */}
-          <div className="card space-y-3">
+          <div className="card space-y-3 border-t-4 border-t-indigo-500">
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[color:var(--brand-navy)] text-[color:var(--brand-gold)]">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-sm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <path d="M12 2a4 4 0 014 4v2a4 4 0 110 8v2a4 4 0 11-8 0v-2a4 4 0 110-8V6a4 4 0 014-4z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
                 </svg>
@@ -542,6 +549,21 @@ export default function TaxCalculatorPage() {
   );
 }
 
+// Rotating palette for the levy dots — gives the breakdown its splash of colour.
+const DOT_COLORS = ["#0ea5e9", "#f43f5e", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#14b8a6", "#6366f1"];
+
+function StatTile({ gradient, label, value, sub, dark }: { gradient: string; label: string; value: string; sub: string; dark?: boolean }) {
+  const main = dark ? "text-[color:var(--brand-navy)]" : "text-white";
+  const soft = dark ? "text-[color:var(--brand-navy)]/70" : "text-white/85";
+  return (
+    <div className={`rounded-xl bg-gradient-to-br ${gradient} p-3.5 shadow-sm`}>
+      <div className={`text-[10px] uppercase tracking-wider font-bold ${soft}`}>{label}</div>
+      <div className={`mt-1 text-lg font-bold leading-tight break-words ${main}`}>{value}</div>
+      <div className={`text-[10px] mt-0.5 ${soft}`}>{sub}</div>
+    </div>
+  );
+}
+
 function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <label className="block">
@@ -604,16 +626,19 @@ function NumberPad({ onUseValue }: { onUseValue: (v: string) => void }) {
 
   const valid = display !== "Error";
 
-  const opBtn = "rounded-lg bg-[color:var(--brand-cream)] text-[color:var(--brand-navy)] font-bold py-3 hover:brightness-95 transition";
+  const opBtn = "rounded-lg bg-indigo-50 text-indigo-700 font-bold py-3 hover:bg-indigo-100 transition";
   const numBtn = "rounded-lg bg-white border border-[color:var(--border)] text-[color:var(--brand-navy)] font-semibold py-3 hover:bg-[color:var(--brand-cream)] transition";
 
   return (
     <div className="card space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-bold text-sm text-[color:var(--brand-navy)]">Quick calculator</h3>
+        <h3 className="font-bold text-sm text-[color:var(--brand-navy)] flex items-center gap-2">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-xs font-bold">±</span>
+          Quick calculator
+        </h3>
         <span className="text-[10px] text-[color:var(--muted)]">{op ? `${prev ?? ""} ${op}` : " "}</span>
       </div>
-      <div className="rounded-lg bg-[color:var(--brand-navy)] text-white px-3 py-3 text-right font-mono text-xl overflow-x-auto">
+      <div className="rounded-lg bg-gradient-to-r from-[color:var(--brand-navy)] to-[color:var(--brand-navy-soft)] text-white px-3 py-3 text-right font-mono text-xl overflow-x-auto">
         {valid ? Number(display).toLocaleString(undefined, { maximumFractionDigits: 6 }) : "Error"}
       </div>
       <div className="grid grid-cols-4 gap-2 text-sm">
@@ -629,7 +654,7 @@ function NumberPad({ onUseValue }: { onUseValue: (v: string) => void }) {
         <button type="button" onClick={() => chooseOp("+")} className={opBtn}>+</button>
 
         {["1", "2", "3"].map((d) => <button key={d} type="button" onClick={() => inputDigit(d)} className={numBtn}>{d}</button>)}
-        <button type="button" onClick={equals} className="row-span-2 rounded-lg bg-[color:var(--brand-navy)] text-white font-bold hover:brightness-110 transition">=</button>
+        <button type="button" onClick={equals} className="row-span-2 rounded-lg bg-gradient-to-b from-emerald-500 to-teal-600 text-white font-bold hover:brightness-110 transition">=</button>
 
         <button type="button" onClick={() => inputDigit("0")} className={`${numBtn} col-span-2`}>0</button>
         <button type="button" onClick={inputDot} className={numBtn}>.</button>
