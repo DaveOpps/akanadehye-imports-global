@@ -48,6 +48,17 @@ type Breakdown = {
   photoSeen?: string;
 };
 type ChatMsg = { role: "user" | "assistant"; content: string };
+type UsageStats = {
+  model: string;
+  startedAt: number;
+  now: number;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  estCostUsd: number;
+  pricing: { inputPerMTok: number; outputPerMTok: number };
+};
 
 export default function TaxCalculatorPage() {
   const { data: session, status } = useSession();
@@ -122,6 +133,18 @@ export default function TaxCalculatorPage() {
   }
   useEffect(() => { if (isSuperAdmin) loadHistory(); }, [isSuperAdmin]);
 
+  // Live API usage / cost meter for the tax assistant
+  const [usage, setUsage] = useState<UsageStats | null>(null);
+  async function loadUsage() {
+    try {
+      const res = await fetch("/api/admin/tax-calculator?view=usage", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.usage) setUsage(data.usage);
+    } catch { /* ignore */ }
+  }
+  useEffect(() => { if (isSuperAdmin) loadUsage(); }, [isSuperAdmin]);
+
   async function saveEstimate() {
     if (!result || !lastInput) return;
     setSaving(true);
@@ -180,7 +203,7 @@ export default function TaxCalculatorPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) setError(data.error ?? "Calculation failed.");
-      else { setResult(data as Breakdown); setLastInput(input); }
+      else { setResult(data as Breakdown); setLastInput(input); loadUsage(); }
     } catch {
       setError("Network error — please try again.");
     } finally {
@@ -205,6 +228,7 @@ export default function TaxCalculatorPage() {
       });
       const data = await res.json();
       setChat([...next, { role: "assistant", content: data.reply ?? data.error ?? "No answer." }]);
+      loadUsage();
     } catch {
       setChat([...next, { role: "assistant", content: "Network error — please try again." }]);
     } finally {
@@ -487,6 +511,32 @@ export default function TaxCalculatorPage() {
             </form>
           </div>
 
+          {/* Session API usage / cost meter */}
+          <div className="card border-t-4 border-t-pink-400 bg-gradient-to-b from-pink-50/40 to-white">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-bold text-sm text-pink-700 flex items-center gap-2">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-pink-400 to-fuchsia-500 text-white text-xs">₵</span>
+                API usage this session
+              </h3>
+              <button type="button" onClick={loadUsage} className="text-[11px] font-semibold text-pink-600 hover:underline">Refresh</button>
+            </div>
+            {!usage ? (
+              <p className="text-sm text-[color:var(--muted)]">Loading…</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <UsageTile label="Calls" value={usage.calls.toLocaleString()} sub="to the assistant" />
+                  <UsageTile label="Input tokens" value={usage.inputTokens.toLocaleString()} sub={`$${usage.pricing.inputPerMTok}/M`} />
+                  <UsageTile label="Output tokens" value={usage.outputTokens.toLocaleString()} sub={`$${usage.pricing.outputPerMTok}/M`} />
+                  <UsageTile label="Est. cost" value={`$${usage.estCostUsd.toFixed(4)}`} sub={usage.model.replace("claude-", "")} highlight />
+                </div>
+                <p className="text-[11px] text-[color:var(--muted)] mt-3 leading-relaxed">
+                  Live estimate for this server instance since {new Date(usage.startedAt).toLocaleTimeString()} — resets on redeploy and counts per instance. Your Anthropic Console is the authoritative bill.
+                </p>
+              </>
+            )}
+          </div>
+
           {/* Saved estimates */}
           <div className="card">
             <button
@@ -579,6 +629,16 @@ function StatTile({ gradient, label, value, sub, dark }: { gradient: string; lab
       <div className={`text-[10px] uppercase tracking-wider font-bold ${soft}`}>{label}</div>
       <div className={`mt-1 text-lg font-bold leading-tight break-words ${main}`}>{value}</div>
       <div className={`text-[10px] mt-0.5 ${soft}`}>{sub}</div>
+    </div>
+  );
+}
+
+function UsageTile({ label, value, sub, highlight }: { label: string; value: string; sub: string; highlight?: boolean }) {
+  return (
+    <div className={`rounded-xl p-3 ${highlight ? "bg-gradient-to-br from-pink-500 to-fuchsia-600 text-white" : "bg-pink-50 border border-pink-100"}`}>
+      <div className={`text-[10px] uppercase tracking-wider font-bold ${highlight ? "text-white/85" : "text-pink-500"}`}>{label}</div>
+      <div className={`mt-0.5 text-base font-bold tabular-nums ${highlight ? "text-white" : "text-[color:var(--brand-navy)]"}`}>{value}</div>
+      <div className={`text-[10px] ${highlight ? "text-white/80" : "text-[color:var(--muted)]"}`}>{sub}</div>
     </div>
   );
 }

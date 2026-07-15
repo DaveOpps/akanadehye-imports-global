@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { recordUsage } from "./usageMeter";
 
 /**
  * Import-tax "brain" for the super-admin calculator.
@@ -163,6 +164,7 @@ export async function computeTaxBreakdown(input: TaxCalcInput): Promise<TaxBreak
       tool_choice: { type: "tool", name: "report_tax_breakdown" },
       messages: [{ role: "user", content }],
     });
+    recordUsage(MODEL, msg.usage);
 
     const toolUse = msg.content.find(
       (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
@@ -195,6 +197,7 @@ export async function taxChat(history: ChatMsg[], context?: TaxBreakdown | null)
         "\n\nWhen chatting, keep answers concise and practical for a business owner. Use GHS. Remind that figures are estimates when giving numbers.",
       messages: history.slice(-12).map((m) => ({ role: m.role, content: m.content })),
     });
+    recordUsage(MODEL, msg.usage);
 
     const text = msg.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")

@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { hit } from "@/lib/rateLimit";
 import { computeTaxBreakdown, taxChat, type TaxCalcInput, type ChatMsg, type TaxBreakdown } from "@/lib/taxBrain";
+import { getUsageStats } from "@/lib/usageMeter";
 
 export const dynamic = "force-dynamic";
 
@@ -56,12 +57,18 @@ async function requireSuperAdmin() {
   return session?.user as { role?: string; id?: string; email?: string } | undefined;
 }
 
-// GET /api/admin/tax-calculator — super_admin: list saved estimates
-export async function GET() {
+// GET /api/admin/tax-calculator — super_admin. Default: list saved estimates.
+// ?view=usage returns the live session usage/cost meter for the tax assistant.
+export async function GET(req: NextRequest) {
   const user = await requireSuperAdmin();
   if (user?.role !== "super_admin") {
     return NextResponse.json({ ok: false, error: "Restricted to the super admin." }, { status: 403 });
   }
+
+  if (new URL(req.url).searchParams.get("view") === "usage") {
+    return NextResponse.json({ ok: true, usage: getUsageStats() });
+  }
+
   const estimates = await prisma.taxEstimate.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
   return NextResponse.json({
     ok: true,
