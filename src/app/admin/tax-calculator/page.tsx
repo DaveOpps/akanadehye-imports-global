@@ -538,6 +538,12 @@ export default function TaxCalculatorPage() {
                                   <div className="text-[11px] text-[color:var(--muted)]">
                                     {new Date(e.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} · {e.originCountry}
                                   </div>
+                                  {e.imageUrl && (
+                                    <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-pink-100 text-pink-700 px-2 py-0.5 text-[10px] font-bold">
+                                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                      Photo used
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </td>
