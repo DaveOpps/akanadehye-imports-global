@@ -45,6 +45,7 @@ type Breakdown = {
   effectiveTaxRatePercent: number;
   assumptions: string;
   disclaimer: string;
+  photoSeen?: string;
 };
 type ChatMsg = { role: "user" | "assistant"; content: string };
 
@@ -244,9 +245,9 @@ export default function TaxCalculatorPage() {
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         {/* ── Form + number pad ── */}
         <div className="space-y-6 lg:sticky lg:top-20 lg:self-start">
-        <form onSubmit={calculate} className="card space-y-4 border-t-4 border-t-[color:var(--brand-gold)]">
+        <form onSubmit={calculate} className="card space-y-4 border-t-4 border-t-pink-400 bg-gradient-to-b from-pink-50/40 to-white">
           <div className="flex items-center gap-2.5">
-            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow-sm">
+            <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-pink-400 to-fuchsia-600 text-white shadow-sm">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 8l9-5 9 5v8l-9 5-9-5V8zM3 8l9 5m0 0l9-5m-9 5v9" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/></svg>
             </span>
             <h2 className="font-bold text-base text-[color:var(--brand-navy)]">Product &amp; shipment</h2>
@@ -259,7 +260,7 @@ export default function TaxCalculatorPage() {
             />
           </Field>
 
-          <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--brand-cream)]/30 p-3">
+          <div className="rounded-xl border border-pink-200 bg-pink-50/50 p-3">
             <ImageUploader value={images} onChange={setImages} label="Product photos (optional)" />
             <p className="mt-2 text-[11px] text-[color:var(--muted)]">
               📷 Add a photo and the assistant will <strong>look at it</strong> to classify the goods (HS code) more accurately.
@@ -335,8 +336,8 @@ export default function TaxCalculatorPage() {
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
-          <button type="submit" disabled={calculating} className="btn-gold w-full justify-center disabled:opacity-60">
-            {calculating ? "Estimating…" : "Calculate taxes"}
+          <button type="submit" disabled={calculating} className="w-full inline-flex items-center justify-center rounded-lg py-2.5 font-bold text-white bg-gradient-to-r from-pink-500 to-fuchsia-600 hover:brightness-105 disabled:opacity-60 transition shadow-sm">
+            {calculating ? "Estimating…" : "✨ Calculate taxes"}
           </button>
         </form>
 
@@ -347,7 +348,7 @@ export default function TaxCalculatorPage() {
         <div className="space-y-6 min-w-0">
           {!result ? (
             <div className="card text-center py-12">
-              <div className="mx-auto h-12 w-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white mb-3 shadow-sm">
+              <div className="mx-auto h-12 w-12 rounded-full bg-gradient-to-br from-pink-400 to-fuchsia-500 flex items-center justify-center text-white mb-3 shadow-sm">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                   <rect x="4" y="2" width="16" height="20" rx="2" stroke="currentColor" strokeWidth="2" />
                   <path d="M8 6h8M8 10h2M8 14h2M14 10h2M14 14h2M8 18h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -360,10 +361,10 @@ export default function TaxCalculatorPage() {
             <div className="card space-y-5">
               {/* Colourful stat tiles */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <StatTile gradient="from-sky-500 to-blue-600" label="CIF value" value={formatPrice(result.customsValueGhs)} sub="cost + freight + ins." />
-                <StatTile gradient="from-rose-500 to-red-600" label="Total taxes" value={formatPrice(result.totalTaxesGhs)} sub={`${result.effectiveTaxRatePercent.toFixed(1)}% of CIF`} />
-                <StatTile gradient="from-emerald-500 to-teal-600" label="Effective rate" value={`${result.effectiveTaxRatePercent.toFixed(1)}%`} sub="taxes ÷ CIF" />
-                <StatTile gradient="from-amber-400 to-yellow-500" dark label="Landed cost" value={formatPrice(result.totalLandedCostGhs)} sub="all-in total" />
+                <StatTile gradient="from-pink-400 to-rose-500" label="CIF value" value={formatPrice(result.customsValueGhs)} sub="cost + freight + ins." />
+                <StatTile gradient="from-fuchsia-500 to-pink-600" label="Total taxes" value={formatPrice(result.totalTaxesGhs)} sub={`${result.effectiveTaxRatePercent.toFixed(1)}% of CIF`} />
+                <StatTile gradient="from-purple-400 to-violet-600" label="Effective rate" value={`${result.effectiveTaxRatePercent.toFixed(1)}%`} sub="taxes ÷ CIF" />
+                <StatTile gradient="from-rose-300 to-pink-400" dark label="Landed cost" value={formatPrice(result.totalLandedCostGhs)} sub="all-in total" />
               </div>
 
               <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -373,12 +374,24 @@ export default function TaxCalculatorPage() {
                   type="button"
                   onClick={saveEstimate}
                   disabled={saving}
-                  className="ml-auto inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-[color:var(--brand-navy)] text-[color:var(--brand-navy)] hover:bg-[color:var(--brand-cream)] disabled:opacity-50 transition"
+                  className="ml-auto inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-pink-300 text-pink-600 hover:bg-pink-50 disabled:opacity-50 transition"
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2zM17 21v-8H7v8M7 3v5h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   {savedMsg || (saving ? "Saving…" : "Save estimate")}
                 </button>
               </div>
+
+              {/* Proof the assistant actually looked at the photo */}
+              {result.photoSeen && result.photoSeen.trim() && (lastInput?.images?.length ?? 0) > 0 && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-pink-200 bg-pink-50/70 px-3.5 py-2.5">
+                  <span className="mt-0.5 shrink-0 inline-flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-fuchsia-500 text-white">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/></svg>
+                  </span>
+                  <p className="text-xs text-pink-900 leading-relaxed">
+                    <strong>Read your photo:</strong> {result.photoSeen} — the classification above is based on this.
+                  </p>
+                </div>
+              )}
 
               {/* Line items */}
               <div className="overflow-x-auto">
@@ -402,7 +415,7 @@ export default function TaxCalculatorPage() {
                         </td>
                         <td className="py-2 text-right tabular-nums">
                           {li.ratePercent != null ? (
-                            <span className="inline-block rounded-full bg-[color:var(--brand-cream)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--brand-navy)]">{li.ratePercent}%</span>
+                            <span className="inline-block rounded-full bg-pink-100 px-2 py-0.5 text-[11px] font-semibold text-pink-700">{li.ratePercent}%</span>
                           ) : <span className="text-[color:var(--muted)]">—</span>}
                         </td>
                         <td className="py-2 text-right font-semibold tabular-nums">{formatPrice(li.amountGhs)}</td>
@@ -410,9 +423,9 @@ export default function TaxCalculatorPage() {
                     ))}
                     <tr>
                       <td colSpan={3} className="pt-2">
-                        <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-[color:var(--brand-navy)] to-[color:var(--brand-navy-soft)] text-white px-3.5 py-2.5">
+                        <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-pink-500 to-fuchsia-600 text-white px-3.5 py-2.5">
                           <span className="font-bold">Total taxes &amp; levies</span>
-                          <span className="font-bold text-[color:var(--brand-gold)] tabular-nums">{formatPrice(result.totalTaxesGhs)}</span>
+                          <span className="font-bold text-white tabular-nums">{formatPrice(result.totalTaxesGhs)}</span>
                         </div>
                       </td>
                     </tr>
@@ -430,9 +443,9 @@ export default function TaxCalculatorPage() {
           )}
 
           {/* Chat / brain */}
-          <div className="card space-y-3 border-t-4 border-t-indigo-500">
+          <div className="card space-y-3 border-t-4 border-t-fuchsia-400 bg-gradient-to-b from-fuchsia-50/40 to-white">
             <div className="flex items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-sm">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-pink-400 to-fuchsia-600 text-white shadow-sm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <path d="M12 2a4 4 0 014 4v2a4 4 0 110 8v2a4 4 0 11-8 0v-2a4 4 0 110-8V6a4 4 0 014-4z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
                 </svg>
@@ -444,13 +457,13 @@ export default function TaxCalculatorPage() {
             </div>
 
             {chat.length > 0 && (
-              <div className="max-h-80 overflow-y-auto space-y-3 rounded-lg bg-[color:var(--brand-cream)]/30 p-3">
+              <div className="max-h-80 overflow-y-auto space-y-3 rounded-lg bg-pink-50/40 p-3">
                 {chat.map((m, i) => (
                   <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap ${
                       m.role === "user"
-                        ? "bg-[color:var(--brand-navy)] text-white"
-                        : "bg-white border border-[color:var(--border)] text-[color:var(--brand-navy)]"
+                        ? "bg-gradient-to-br from-pink-500 to-fuchsia-600 text-white"
+                        : "bg-white border border-pink-100 text-[color:var(--brand-navy)]"
                     }`}>
                       {m.content}
                     </div>
@@ -468,7 +481,7 @@ export default function TaxCalculatorPage() {
                 placeholder="Ask about duty rates, HS codes, exemptions…"
                 className="input flex-1"
               />
-              <button type="submit" disabled={chatBusy || !chatInput.trim()} className="btn-primary shrink-0 disabled:opacity-40">
+              <button type="submit" disabled={chatBusy || !chatInput.trim()} className="shrink-0 rounded-lg px-4 font-bold text-white bg-gradient-to-r from-pink-500 to-fuchsia-600 hover:brightness-105 disabled:opacity-40 transition">
                 Send
               </button>
             </form>
@@ -550,7 +563,7 @@ export default function TaxCalculatorPage() {
 }
 
 // Rotating palette for the levy dots — gives the breakdown its splash of colour.
-const DOT_COLORS = ["#0ea5e9", "#f43f5e", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#14b8a6", "#6366f1"];
+const DOT_COLORS = ["#ec4899", "#f472b6", "#d946ef", "#a855f7", "#f43f5e", "#c026d3", "#e879f9", "#9333ea"];
 
 function StatTile({ gradient, label, value, sub, dark }: { gradient: string; label: string; value: string; sub: string; dark?: boolean }) {
   const main = dark ? "text-[color:var(--brand-navy)]" : "text-white";
@@ -626,44 +639,58 @@ function NumberPad({ onUseValue }: { onUseValue: (v: string) => void }) {
 
   const valid = display !== "Error";
 
-  const opBtn = "rounded-lg bg-indigo-50 text-indigo-700 font-bold py-3 hover:bg-indigo-100 transition";
-  const numBtn = "rounded-lg bg-white border border-[color:var(--border)] text-[color:var(--brand-navy)] font-semibold py-3 hover:bg-[color:var(--brand-cream)] transition";
+  // Candy pastels — each digit its own colour for a soft, girly look.
+  const KEY_PASTEL: Record<string, string> = {
+    "7": "bg-pink-100 text-pink-700 hover:bg-pink-200",
+    "8": "bg-rose-100 text-rose-700 hover:bg-rose-200",
+    "9": "bg-fuchsia-100 text-fuchsia-700 hover:bg-fuchsia-200",
+    "4": "bg-purple-100 text-purple-700 hover:bg-purple-200",
+    "5": "bg-violet-100 text-violet-700 hover:bg-violet-200",
+    "6": "bg-pink-100 text-pink-700 hover:bg-pink-200",
+    "1": "bg-fuchsia-100 text-fuchsia-700 hover:bg-fuchsia-200",
+    "2": "bg-rose-100 text-rose-700 hover:bg-rose-200",
+    "3": "bg-purple-100 text-purple-700 hover:bg-purple-200",
+    "0": "bg-pink-100 text-pink-700 hover:bg-pink-200",
+    ".": "bg-violet-100 text-violet-700 hover:bg-violet-200",
+  };
+  const keyCls = (d: string) => `rounded-lg font-bold py-3 transition ${KEY_PASTEL[d] ?? "bg-pink-100 text-pink-700"}`;
+  const opBtn = "rounded-lg bg-gradient-to-br from-fuchsia-400 to-purple-500 text-white font-bold py-3 hover:brightness-105 transition";
 
   return (
-    <div className="card space-y-3">
+    <div className="card space-y-3 border-t-4 border-t-pink-400 bg-gradient-to-b from-pink-50/60 to-white">
       <div className="flex items-center justify-between">
-        <h3 className="font-bold text-sm text-[color:var(--brand-navy)] flex items-center gap-2">
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-xs font-bold">±</span>
+        <h3 className="font-bold text-sm text-pink-700 flex items-center gap-2">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-gradient-to-br from-pink-400 to-fuchsia-500 text-white text-xs font-bold">±</span>
           Quick calculator
         </h3>
         <span className="text-[10px] text-[color:var(--muted)]">{op ? `${prev ?? ""} ${op}` : " "}</span>
       </div>
-      <div className="rounded-lg bg-gradient-to-r from-[color:var(--brand-navy)] to-[color:var(--brand-navy-soft)] text-white px-3 py-3 text-right font-mono text-xl overflow-x-auto">
+      <div className="rounded-lg bg-gradient-to-r from-fuchsia-500 via-pink-500 to-rose-500 text-white px-3 py-3 text-right font-mono text-xl overflow-x-auto shadow-sm">
         {valid ? Number(display).toLocaleString(undefined, { maximumFractionDigits: 6 }) : "Error"}
       </div>
       <div className="grid grid-cols-4 gap-2 text-sm">
-        <button type="button" onClick={clearAll} className="rounded-lg bg-[color:var(--brand-clay)]/10 text-[color:var(--brand-clay)] font-bold py-3 hover:bg-[color:var(--brand-clay)]/20 transition">C</button>
+        <button type="button" onClick={clearAll} className="rounded-lg bg-gradient-to-br from-rose-400 to-pink-500 text-white font-bold py-3 hover:brightness-105 transition">C</button>
         <button type="button" onClick={backspace} className={opBtn}>⌫</button>
         <button type="button" onClick={() => chooseOp("÷")} className={opBtn}>÷</button>
         <button type="button" onClick={() => chooseOp("×")} className={opBtn}>×</button>
 
-        {["7", "8", "9"].map((d) => <button key={d} type="button" onClick={() => inputDigit(d)} className={numBtn}>{d}</button>)}
+        {["7", "8", "9"].map((d) => <button key={d} type="button" onClick={() => inputDigit(d)} className={keyCls(d)}>{d}</button>)}
         <button type="button" onClick={() => chooseOp("−")} className={opBtn}>−</button>
 
-        {["4", "5", "6"].map((d) => <button key={d} type="button" onClick={() => inputDigit(d)} className={numBtn}>{d}</button>)}
+        {["4", "5", "6"].map((d) => <button key={d} type="button" onClick={() => inputDigit(d)} className={keyCls(d)}>{d}</button>)}
         <button type="button" onClick={() => chooseOp("+")} className={opBtn}>+</button>
 
-        {["1", "2", "3"].map((d) => <button key={d} type="button" onClick={() => inputDigit(d)} className={numBtn}>{d}</button>)}
-        <button type="button" onClick={equals} className="row-span-2 rounded-lg bg-gradient-to-b from-emerald-500 to-teal-600 text-white font-bold hover:brightness-110 transition">=</button>
+        {["1", "2", "3"].map((d) => <button key={d} type="button" onClick={() => inputDigit(d)} className={keyCls(d)}>{d}</button>)}
+        <button type="button" onClick={equals} className="row-span-2 rounded-lg bg-gradient-to-b from-pink-500 to-fuchsia-600 text-white font-bold hover:brightness-110 transition">=</button>
 
-        <button type="button" onClick={() => inputDigit("0")} className={`${numBtn} col-span-2`}>0</button>
-        <button type="button" onClick={inputDot} className={numBtn}>.</button>
+        <button type="button" onClick={() => inputDigit("0")} className={`${keyCls("0")} col-span-2`}>0</button>
+        <button type="button" onClick={inputDot} className={keyCls(".")}>.</button>
       </div>
       <button
         type="button"
         onClick={() => valid && onUseValue(String(Number(display.replace(/,/g, ""))))}
         disabled={!valid}
-        className="w-full text-xs font-bold py-2 rounded-lg border border-[color:var(--brand-navy)] text-[color:var(--brand-navy)] hover:bg-[color:var(--brand-cream)] disabled:opacity-40 transition"
+        className="w-full text-xs font-bold py-2 rounded-lg border border-pink-300 text-pink-600 hover:bg-pink-50 disabled:opacity-40 transition"
       >
         ↑ Use as product value
       </button>

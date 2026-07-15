@@ -56,6 +56,7 @@ export type TaxBreakdown = {
   effectiveTaxRatePercent: number;
   assumptions: string;
   disclaimer: string;
+  photoSeen?: string; // what the model observed in the product photo(s), if any
 };
 
 export type TaxError = { ok: false; error: string };
@@ -113,10 +114,11 @@ const TAX_TOOL: Anthropic.Tool = {
       effectiveTaxRatePercent: { type: "number", description: "totalTaxes / CIF * 100." },
       assumptions: { type: "string", description: "Key assumptions: HS class, duty rate chosen, origin treatment." },
       disclaimer: { type: "string" },
+      photoSeen: { type: "string", description: "If product photo(s) were provided, a short factual description of what you actually see in them (e.g. 'a brown leather handbag'). If NO photo was provided, return an empty string." },
     },
     required: [
       "hsCodeGuess", "customsValueGhs", "lineItems", "totalTaxesGhs",
-      "totalLandedCostGhs", "effectiveTaxRatePercent", "assumptions", "disclaimer",
+      "totalLandedCostGhs", "effectiveTaxRatePercent", "assumptions", "disclaimer", "photoSeen",
     ],
   },
 };
