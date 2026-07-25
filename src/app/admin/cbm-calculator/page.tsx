@@ -211,7 +211,7 @@ export default function CbmCalculatorPage() {
           <main>
             {/* Inputs */}
             <section className="panel inputs-panel">
-              <h2>Packages<span style={{ fontSize: 9, color: "var(--accent)" }}>{packages.length} type(s)</span></h2>
+              <h2>Packages<span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>{packages.length} type(s)</span></h2>
 
               {packages.map((pkg, idx) => (
                 <div key={pkg.id} className="pkg-card" style={{ outline: selectedPkg === idx ? "1.5px solid var(--accent)" : "none" }} onClick={() => setSelectedPkg(idx)}>
@@ -327,13 +327,13 @@ export default function CbmCalculatorPage() {
                 <div className="weight-row"><span>Volumetric — Air (167)</span><strong>{formatNum(results.volWeightAir, 1)} kg</strong></div>
                 <div className="weight-row"><span>Volumetric — {DIM_FACTORS[dimKey].label}</span><strong>{formatNum(results.volWeight, 1)} kg</strong></div>
                 <div className={`weight-row highlight ${results.isVolHigher ? "warn" : ""}`}><span>Chargeable Weight</span><strong>{formatNum(results.chargeable, 1)} kg</strong></div>
-                {results.isVolHigher && <div style={{ fontSize: 8, color: "var(--warn)", marginTop: 3 }}>Charged by volume (DIM higher)</div>}
+                {results.isVolHigher && <div style={{ fontSize: 10, fontWeight: 600, color: "var(--warn)", marginTop: 3 }}>Charged by volume (DIM higher)</div>}
               </div>
 
               <div className="density-card">
                 <div className="density-row"><span>Packing Density</span><strong>{formatNum(results.density, 1)} kg/m³</strong></div>
                 <div className="density-row"><span>Total Pieces</span><strong>{results.totalPieces}</strong></div>
-                <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 3 }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-dim)", marginTop: 3 }}>
                   {results.density < 150 ? "Light / bulky goods" : results.density < 300 ? "Medium density" : "Dense / heavy goods"}
                 </div>
               </div>
@@ -349,7 +349,7 @@ export default function CbmCalculatorPage() {
                     <strong>{activeCartonCBM > 0 ? Math.floor(c.cbm / activeCartonCBM).toLocaleString() : 0}</strong>
                   </div>
                 ))}
-                <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 3 }}>Boxes of the selected package per container (approx. loadable volume)</div>
+                <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-dim)", marginTop: 3 }}>Boxes of the selected package per container (approx. loadable volume)</div>
               </div>
 
               <div className="cost-section">
@@ -390,7 +390,7 @@ const CBM_CSS = `
 .cbm-root[data-theme="light"] {
   --bg: #f0f4f8; --panel: rgba(255,255,255,0.9); --panel-border: rgba(0,0,0,0.08);
   --accent: #a67c1a; --accent-dim: rgba(212,169,81,0.12); --accent-glow: rgba(212,169,81,0.25);
-  --text: #1a2332; --text-dim: #5a6a7e; --warn: #e67e22; --danger: #e74c3c;
+  --text: #10192b; --text-dim: #3d4b60; --warn: #c96a12; --danger: #d63b2c;
   --input-bg: rgba(0,0,0,0.04); --card-bg: rgba(0,0,0,0.03);
 }
 .cbm-root { position: relative; overflow: hidden; border-radius: 16px; margin-top: 4px;
@@ -408,7 +408,7 @@ const CBM_CSS = `
 .cbm-root .logo-mark { width: 40px; height: 40px; background: linear-gradient(135deg, var(--accent), #0a1628); color: #fff !important;
   border-radius: 11px; display: grid; place-items: center; font-weight: 700; font-size: 11px; color: #041510; box-shadow: 0 0 18px var(--accent-glow); }
 .cbm-root .logo-text span { display: block; font-weight: 600; font-size: 15px; }
-.cbm-root .logo-text small { font-size: 10px; color: var(--text-dim); }
+.cbm-root .logo-text small { font-size: 11px; color: var(--text-dim); }
 .cbm-root .header-actions { display: flex; gap: 8px; align-items: center; }
 .cbm-root .theme-btn, .cbm-root .print-btn { background: var(--card-bg); border: 1px solid var(--panel-border);
   border-radius: 8px; padding: 7px 12px; color: var(--text); font-family: var(--font); font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.15s; }
@@ -418,7 +418,7 @@ const CBM_CSS = `
   backdrop-filter: blur(16px); padding: 16px; box-shadow: 0 6px 24px rgba(0,0,0,0.15); animation: cbmFadeUp 0.35s ease both; }
 .cbm-root .inputs-panel { max-height: calc(100vh - 120px); overflow-y: auto; }
 @keyframes cbmFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-.cbm-root .panel h2 { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 1.1px; color: var(--text-dim);
+.cbm-root .panel h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.1px; color: var(--text-dim);
   margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
 .cbm-root .pkg-card { background: var(--card-bg); border: 1px solid var(--panel-border); border-radius: 9px; padding: 10px; margin-bottom: 8px; cursor: pointer; transition: outline 0.15s; }
 .cbm-root .pkg-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
@@ -427,9 +427,9 @@ const CBM_CSS = `
 .cbm-root .pkg-remove:hover { opacity: 1; }
 .cbm-root .field-row { display: grid; grid-template-columns: 1fr 1fr 1fr 65px; gap: 5px; margin-bottom: 5px; }
 .cbm-root .field-row.qty-row { grid-template-columns: 1fr 70px; }
-.cbm-root .mini-label { font-size: 9px; color: var(--text-dim); margin-bottom: 2px; }
+.cbm-root .mini-label { font-size: 11px; color: var(--text-dim); margin-bottom: 2px; }
 .cbm-root input, .cbm-root select { background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px;
-  padding: 6px 7px; color: var(--text); font-size: 12px; outline: none; width: 100%; font-family: var(--mono); transition: border-color 0.15s; }
+  padding: 7px 8px; color: var(--text); font-size: 13px; font-weight: 600; outline: none; width: 100%; font-family: var(--mono); transition: border-color 0.15s; }
 .cbm-root input:focus, .cbm-root select:focus { border-color: var(--accent); }
 .cbm-root select { font-family: var(--font); cursor: pointer; }
 .cbm-root .conv-out { background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 6px; padding: 6px 7px; color: var(--accent); font-family: var(--mono); font-size: 12px; font-weight: 700; text-align: right; }
@@ -439,13 +439,13 @@ const CBM_CSS = `
 .cbm-root .section-divider { height: 1px; background: var(--panel-border); margin: 12px 0 10px; }
 .cbm-root .dim-factor-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .cbm-root .chip { background: var(--card-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 6px 4px;
-  font-size: 10px; text-align: center; cursor: pointer; transition: all 0.15s; color: var(--text-dim); }
+  font-size: 11px; text-align: center; cursor: pointer; transition: all 0.15s; color: var(--text-dim); }
 .cbm-root .chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-.cbm-root .chip small { display: block; font-size: 8px; opacity: 0.7; margin-top: 1px; }
+.cbm-root .chip small { display: block; font-size: 11px; opacity: 0.7; margin-top: 1px; }
 .cbm-root .visual-panel { display: flex; flex-direction: column; align-items: center; min-height: 380px; overflow: hidden; }
 .cbm-root .visual-header { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
-.cbm-root .visual-header span { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); }
-.cbm-root .dims-label { font-family: var(--mono); font-size: 10px; color: var(--accent); background: var(--accent-dim); padding: 2px 7px; border-radius: 4px; }
+.cbm-root .visual-header span { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); }
+.cbm-root .dims-label { font-family: var(--mono); font-size: 11px; color: var(--accent); background: var(--accent-dim); padding: 2px 7px; border-radius: 4px; }
 .cbm-root .stage { position: relative; width: 220px; height: 190px; perspective: 900px; display: flex; align-items: center; justify-content: center; margin: 4px 0; }
 .cbm-root .cargo-box { position: relative; transform-style: preserve-3d; transform: rotateX(-24deg) rotateY(35deg);
   transition: width 0.4s cubic-bezier(0.34,1.3,0.64,1), height 0.4s cubic-bezier(0.34,1.3,0.64,1); animation: cbmFloat 5.5s ease-in-out infinite; }
@@ -467,35 +467,35 @@ const CBM_CSS = `
 .cbm-root .ring-progress { fill:none; stroke: var(--accent); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 264;
   transition: stroke-dashoffset 0.6s cubic-bezier(0.34,1.2,0.64,1); filter: drop-shadow(0 0 5px var(--accent-glow)); }
 .cbm-root .ring-value { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.cbm-root .ring-value span { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--accent); }
-.cbm-root .ring-value small { font-size: 8px; color: var(--text-dim); }
-.cbm-root .pkg-summary { width: 100%; margin-top: 8px; font-size: 10px; color: var(--text-dim); text-align: center; }
+.cbm-root .ring-value span { font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--accent); }
+.cbm-root .ring-value small { font-size: 11px; color: var(--text-dim); }
+.cbm-root .pkg-summary { width: 100%; margin-top: 8px; font-size: 11px; color: var(--text-dim); text-align: center; }
 .cbm-root .result-card.primary { background: linear-gradient(145deg, var(--accent-dim), transparent); border: 1px solid rgba(212,169,81,0.25);
   border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 10px; }
-.cbm-root .result-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
-.cbm-root .result-value { font-family: var(--mono); font-size: 26px; font-weight: 600; color: var(--accent); line-height: 1.1; }
-.cbm-root .result-unit { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.cbm-root .result-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
+.cbm-root .result-value { font-family: var(--mono); font-size: 26px; font-weight: 800; color: var(--accent); line-height: 1.1; }
+.cbm-root .result-unit { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 .cbm-root .conversions { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
 .cbm-root .conv-item { display: grid; grid-template-columns: 1fr auto auto; gap: 4px; align-items: center; background: var(--card-bg); border-radius: 7px; padding: 7px 9px; }
-.cbm-root .conv-label { font-size: 10px; color: var(--text-dim); }
-.cbm-root .conv-value { font-family: var(--mono); font-size: 11px; font-weight: 500; }
-.cbm-root .conv-unit { font-size: 8px; color: var(--accent); font-weight: 600; min-width: 26px; text-align: right; }
+.cbm-root .conv-label { font-size: 11px; color: var(--text-dim); }
+.cbm-root .conv-value { font-family: var(--mono); font-size: 11px; font-weight: 700; }
+.cbm-root .conv-unit { font-size: 11px; color: var(--accent); font-weight: 600; min-width: 26px; text-align: right; }
 .cbm-root .weight-card, .cbm-root .density-card { background: var(--card-bg); border-radius: 8px; padding: 9px; border: 1px solid var(--panel-border); margin-bottom: 8px; }
-.cbm-root .weight-row, .cbm-root .density-row { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); margin-bottom: 4px; }
+.cbm-root .weight-row, .cbm-root .density-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
 .cbm-root .weight-row:last-child, .cbm-root .density-row:last-child { margin-bottom: 0; }
-.cbm-root .weight-row strong, .cbm-root .density-row strong { color: var(--text); font-family: var(--mono); font-weight: 500; }
+.cbm-root .weight-row strong, .cbm-root .density-row strong { color: var(--text); font-family: var(--mono); font-weight: 700; }
 .cbm-root .weight-row.highlight strong { color: var(--accent); font-size: 12px; }
 .cbm-root .weight-row.warn strong { color: var(--warn); }
 .cbm-root .cost-section { border-top: 1px solid var(--panel-border); padding-top: 8px; margin-top: 2px; }
-.cbm-root .cost-section h3 { font-size: 9px; text-transform: uppercase; letter-spacing: 0.9px; color: var(--text-dim); margin-bottom: 6px; font-weight: 500; }
+.cbm-root .cost-section h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.9px; color: var(--text-dim); margin-bottom: 6px; font-weight: 700; }
 .cbm-root .currency-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-top: 5px; }
 .cbm-root .curr-item { background: var(--card-bg); border-radius: 6px; padding: 5px 6px; }
-.cbm-root .curr-item .code { font-size: 8px; color: var(--text-dim); }
-.cbm-root .curr-item .amount { font-family: var(--mono); font-size: 11px; font-weight: 500; margin-top: 1px; }
+.cbm-root .curr-item .code { font-size: 11px; color: var(--text-dim); }
+.cbm-root .curr-item .amount { font-family: var(--mono); font-size: 11px; font-weight: 700; margin-top: 1px; }
 .cbm-root .copy-btn, .cbm-root .print-action { width: 100%; margin-top: 8px; background: var(--accent-dim); border: 1px solid rgba(212,169,81,0.3);
   border-radius: 8px; padding: 8px; color: var(--accent); font-family: var(--font); font-weight: 600; font-size: 11px; cursor: pointer; transition: all 0.15s; }
 .cbm-root .copy-btn:hover, .cbm-root .print-action:hover { background: rgba(212,169,81,0.22); }
-.cbm-root footer { text-align: center; padding: 4px 14px 16px; font-size: 10px; color: var(--text-dim); opacity: 0.45; }
+.cbm-root footer { text-align: center; padding: 4px 14px 16px; font-size: 11px; color: var(--text-dim); opacity: 0.7; font-weight: 600; }
 @media (max-width: 1180px) {
   .cbm-root main { grid-template-columns: 1fr; }
   .cbm-root .visual-panel { order: -1; min-height: 300px; }
