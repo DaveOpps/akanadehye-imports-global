@@ -5,11 +5,27 @@ import PageHeader from "@/components/PageHeader";
 
 /* ── constants ─────────────────────────────────────────────────────── */
 
-type Unit = "cm" | "m" | "inch" | "ft";
+type Unit = "cm" | "mm" | "m" | "inch" | "ft" | "yd";
 type Pkg = { id: number; length: number; width: number; height: number; qty: number; unit: Unit; weight: number };
 
-const toMeters: Record<Unit, number> = { cm: 0.01, m: 1, inch: 0.0254, ft: 0.3048 };
+const toMeters: Record<Unit, number> = { cm: 0.01, mm: 0.001, m: 1, inch: 0.0254, ft: 0.3048, yd: 0.9144 };
+const UNIT_LABEL: Record<Unit, string> = { cm: "cm", mm: "mm", m: "m", inch: "in", ft: "ft", yd: "yd" };
 const fromCBM = { cft: 35.3147, cyd: 1.30795, cin: 61023.7 };
+
+// Standard ocean-container loadable volumes (approx., ~usable), in CBM.
+const CONTAINERS = [
+  { name: "20ft Standard", cbm: 28 },
+  { name: "40ft Standard", cbm: 58 },
+  { name: "40ft High-Cube", cbm: 68 },
+];
+
+// Standalone quick converters (mirrors the CBM↔CFT/CYD/CIN tools).
+const CONVERSIONS: Record<string, { label: string; from: string; to: string; factor: number; dec: number }> = {
+  cbm_cft: { label: "CBM → Cubic Feet", from: "CBM", to: "CFT", factor: 35.3147, dec: 2 },
+  cft_cbm: { label: "Cubic Feet → CBM", from: "CFT", to: "CBM", factor: 1 / 35.3147, dec: 4 },
+  cbm_cyd: { label: "CBM → Cubic Yard", from: "CBM", to: "CYD", factor: 1.30795, dec: 3 },
+  cbm_cin: { label: "CBM → Cubic Inch", from: "CBM", to: "CIN", factor: 61023.7, dec: 0 },
+};
 
 const DIM_FACTORS: Record<string, { label: string; value: number; note: string }> = {
   air_167: { label: "Air (IATA)", value: 167, note: "167 kg/m³" },
@@ -61,7 +77,7 @@ function CargoBox({ length, width, height }: { length: number; width: number; he
 /* ── page ──────────────────────────────────────────────────────────── */
 
 export default function CbmCalculatorPage() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
   const [packages, setPackages] = useState<Pkg[]>([
     { id: nextId++, length: 100, width: 80, height: 60, qty: 1, unit: "cm", weight: 25 },
   ]);
@@ -71,6 +87,8 @@ export default function CbmCalculatorPage() {
   const [baseCurrency, setBaseCurrency] = useState("USD");
   const [copied, setCopied] = useState(false);
   const [selectedPkg, setSelectedPkg] = useState(0);
+  const [convType, setConvType] = useState("cbm_cft");
+  const [convInput, setConvInput] = useState("");
 
   const dimFactor = dimKey === "custom" ? customFactor : DIM_FACTORS[dimKey].value;
 
@@ -86,6 +104,8 @@ export default function CbmCalculatorPage() {
       details.push({ index: i + 1, cbm: vol, weight: p.weight || 0 });
     });
     const volWeight = totalCBM * dimFactor;
+    const volWeightSea = totalCBM * 1000; // sea/LCL: 1 CBM = 1000 kg
+    const volWeightAir = totalCBM * 167; // air (IATA)
     const chargeable = Math.max(totalActual, volWeight);
     const costBase = chargeable * ratePerKg;
     const density = totalCBM > 0 ? totalActual / totalCBM : 0;
@@ -94,7 +114,7 @@ export default function CbmCalculatorPage() {
       cft: totalCBM * fromCBM.cft,
       cyd: totalCBM * fromCBM.cyd,
       cin: totalCBM * fromCBM.cin,
-      volWeight, chargeable, costBase, density,
+      volWeight, volWeightSea, volWeightAir, chargeable, costBase, density,
       isVolHigher: volWeight > totalActual,
     };
   }, [packages, dimFactor, ratePerKg]);
@@ -111,6 +131,14 @@ export default function CbmCalculatorPage() {
   }, [results.costBase, baseCurrency]);
 
   const activePkg = packages[selectedPkg] || packages[0];
+
+  // Single-carton volume of the active package (for container-fit estimates).
+  const activeCartonCBM = activePkg
+    ? activePkg.length * toMeters[activePkg.unit] * activePkg.width * toMeters[activePkg.unit] * activePkg.height * toMeters[activePkg.unit]
+    : 0;
+
+  const conv = CONVERSIONS[convType];
+  const convResult = (parseFloat(convInput) || 0) * conv.factor;
 
   const updatePkg = (id: number, field: keyof Pkg, value: number | string) => {
     setPackages((pkgs) => pkgs.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
@@ -133,10 +161,12 @@ export default function CbmCalculatorPage() {
       `Total CBM: ${formatNum(results.totalCBM, 3)}`,
       `CFT: ${formatNum(results.cft, 2)} | CYD: ${formatNum(results.cyd, 3)}`,
       `Actual Weight: ${formatNum(results.totalActual, 1)} kg`,
-      `Volumetric Weight: ${formatNum(results.volWeight, 1)} kg (factor ${dimFactor})`,
-      `Chargeable Weight: ${formatNum(results.chargeable, 1)} kg`,
+      `Volumetric (Sea): ${formatNum(results.volWeightSea, 1)} kg | (Air): ${formatNum(results.volWeightAir, 1)} kg`,
+      `Chargeable Weight: ${formatNum(results.chargeable, 1)} kg (${DIM_FACTORS[dimKey].label})`,
       `Packing Density: ${formatNum(results.density, 1)} kg/m³`,
       `Est. Cost: ${formatNum(results.costBase, 2)} ${baseCurrency}`,
+      `Approx. cartons (Pkg ${selectedPkg + 1}, ${formatNum(activeCartonCBM, 3)} CBM/box): ` +
+        CONTAINERS.map((c) => `${c.name} ${activeCartonCBM > 0 ? Math.floor(c.cbm / activeCartonCBM) : 0}`).join(" · "),
       ``,
       ...packages.map((p, i) => `Pkg ${i + 1}: ${p.length}×${p.width}×${p.height} ${p.unit} ×${p.qty} → ${formatNum(results.details[i].cbm, 3)} CBM, ${p.weight} kg`),
     ];
@@ -198,7 +228,8 @@ export default function CbmCalculatorPage() {
                     <div>
                       <div className="mini-label">Unit</div>
                       <select value={pkg.unit} onChange={(e) => updatePkg(pkg.id, "unit", e.target.value)}>
-                        <option value="cm">cm</option><option value="m">m</option><option value="inch">inch</option><option value="ft">ft</option>
+                        <option value="cm">cm</option><option value="mm">mm</option><option value="inch">in</option>
+                        <option value="ft">ft</option><option value="yd">yd</option><option value="m">m</option>
                       </select>
                     </div>
                   </div>
@@ -238,13 +269,29 @@ export default function CbmCalculatorPage() {
                   </select>
                 </div>
               </div>
+
+              <div className="section-divider" />
+              <h2>Quick Converter</h2>
+              <select value={convType} onChange={(e) => setConvType(e.target.value)} style={{ marginBottom: 6 }}>
+                {Object.entries(CONVERSIONS).map(([k, c]) => <option key={k} value={k}>{c.label}</option>)}
+              </select>
+              <div className="field-row qty-row">
+                <div>
+                  <div className="mini-label">{conv.from}</div>
+                  <input type="number" value={convInput} min="0" step="any" placeholder="0" onChange={(e) => setConvInput(e.target.value)} />
+                </div>
+                <div>
+                  <div className="mini-label">{conv.to}</div>
+                  <div className="conv-out">{formatNum(convResult, conv.dec)}</div>
+                </div>
+              </div>
             </section>
 
             {/* Visual */}
             <section className="panel visual-panel">
               <div className="visual-header">
                 <span>Live Preview</span>
-                <div className="dims-label">{activePkg ? `${activePkg.length}×${activePkg.width}×${activePkg.height} ${activePkg.unit}` : "—"}</div>
+                <div className="dims-label">{activePkg ? `${activePkg.length}×${activePkg.width}×${activePkg.height} ${UNIT_LABEL[activePkg.unit]}` : "—"}</div>
               </div>
               <div className="stage">
                 {activePkg && <CargoBox length={activePkg.length} width={activePkg.width} height={activePkg.height} />}
@@ -276,7 +323,9 @@ export default function CbmCalculatorPage() {
 
               <div className="weight-card">
                 <div className="weight-row"><span>Actual Weight</span><strong>{formatNum(results.totalActual, 1)} kg</strong></div>
-                <div className="weight-row"><span>Volumetric Weight</span><strong>{formatNum(results.volWeight, 1)} kg</strong></div>
+                <div className="weight-row"><span>Volumetric — Sea (÷1000)</span><strong>{formatNum(results.volWeightSea, 1)} kg</strong></div>
+                <div className="weight-row"><span>Volumetric — Air (167)</span><strong>{formatNum(results.volWeightAir, 1)} kg</strong></div>
+                <div className="weight-row"><span>Volumetric — {DIM_FACTORS[dimKey].label}</span><strong>{formatNum(results.volWeight, 1)} kg</strong></div>
                 <div className={`weight-row highlight ${results.isVolHigher ? "warn" : ""}`}><span>Chargeable Weight</span><strong>{formatNum(results.chargeable, 1)} kg</strong></div>
                 {results.isVolHigher && <div style={{ fontSize: 8, color: "var(--warn)", marginTop: 3 }}>Charged by volume (DIM higher)</div>}
               </div>
@@ -287,6 +336,20 @@ export default function CbmCalculatorPage() {
                 <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 3 }}>
                   {results.density < 150 ? "Light / bulky goods" : results.density < 300 ? "Medium density" : "Dense / heavy goods"}
                 </div>
+              </div>
+
+              <div className="weight-card">
+                <div className="weight-row" style={{ color: "var(--accent)", fontWeight: 600 }}>
+                  <span>Approx. Cartons — Package {selectedPkg + 1}</span>
+                  <strong style={{ color: "var(--text-dim)" }}>{formatNum(activeCartonCBM, 3)} CBM/box</strong>
+                </div>
+                {CONTAINERS.map((c) => (
+                  <div className="weight-row" key={c.name}>
+                    <span>{c.name} <span style={{ opacity: 0.6 }}>({c.cbm} CBM)</span></span>
+                    <strong>{activeCartonCBM > 0 ? Math.floor(c.cbm / activeCartonCBM).toLocaleString() : 0}</strong>
+                  </div>
+                ))}
+                <div style={{ fontSize: 8, color: "var(--text-dim)", marginTop: 3 }}>Boxes of the selected package per container (approx. loadable volume)</div>
               </div>
 
               <div className="cost-section">
@@ -307,7 +370,7 @@ export default function CbmCalculatorPage() {
             </section>
           </main>
 
-          <footer>Multi-Package CBM · DIM Weight · Density · 20 Currencies · Dark/Light · Print/PDF</footer>
+          <footer>Multi-Package CBM · CFT/CYD/CIN · Sea &amp; Air Volumetric · Container Cartons · Quick Converters · 20+ Currencies</footer>
         </div>
       </div>
     </div>
@@ -319,14 +382,14 @@ export default function CbmCalculatorPage() {
 const CBM_CSS = `
 .cbm-root, .cbm-root[data-theme="dark"] {
   --bg: #0b0f1a; --panel: rgba(18,24,38,0.82); --panel-border: rgba(255,255,255,0.08);
-  --accent: #00d4aa; --accent-dim: rgba(0,212,170,0.15); --accent-glow: rgba(0,212,170,0.4);
+  --accent: #d4a951; --accent-dim: rgba(212,169,81,0.15); --accent-glow: rgba(212,169,81,0.4);
   --text: #e8eef7; --text-dim: #8b9bb4; --warn: #ffb347; --danger: #ff6b6b;
   --input-bg: rgba(0,0,0,0.4); --card-bg: rgba(0,0,0,0.28);
   --radius: 14px; --font: 'Outfit', system-ui, sans-serif; --mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 .cbm-root[data-theme="light"] {
   --bg: #f0f4f8; --panel: rgba(255,255,255,0.9); --panel-border: rgba(0,0,0,0.08);
-  --accent: #00a88a; --accent-dim: rgba(0,168,138,0.12); --accent-glow: rgba(0,168,138,0.25);
+  --accent: #a67c1a; --accent-dim: rgba(212,169,81,0.12); --accent-glow: rgba(212,169,81,0.25);
   --text: #1a2332; --text-dim: #5a6a7e; --warn: #e67e22; --danger: #e74c3c;
   --input-bg: rgba(0,0,0,0.04); --card-bg: rgba(0,0,0,0.03);
 }
@@ -342,7 +405,7 @@ const CBM_CSS = `
 .cbm-root .cbm-inner { position: relative; z-index: 5; display: flex; flex-direction: column; }
 .cbm-root header { padding: 18px 22px 6px; display: flex; align-items: center; justify-content: space-between; }
 .cbm-root .logo { display: flex; align-items: center; gap: 12px; }
-.cbm-root .logo-mark { width: 40px; height: 40px; background: linear-gradient(135deg, var(--accent), #00a88a);
+.cbm-root .logo-mark { width: 40px; height: 40px; background: linear-gradient(135deg, var(--accent), #0a1628); color: #fff !important;
   border-radius: 11px; display: grid; place-items: center; font-weight: 700; font-size: 11px; color: #041510; box-shadow: 0 0 18px var(--accent-glow); }
 .cbm-root .logo-text span { display: block; font-weight: 600; font-size: 15px; }
 .cbm-root .logo-text small { font-size: 10px; color: var(--text-dim); }
@@ -369,9 +432,10 @@ const CBM_CSS = `
   padding: 6px 7px; color: var(--text); font-size: 12px; outline: none; width: 100%; font-family: var(--mono); transition: border-color 0.15s; }
 .cbm-root input:focus, .cbm-root select:focus { border-color: var(--accent); }
 .cbm-root select { font-family: var(--font); cursor: pointer; }
+.cbm-root .conv-out { background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 6px; padding: 6px 7px; color: var(--accent); font-family: var(--mono); font-size: 12px; font-weight: 700; text-align: right; }
 .cbm-root .add-btn { width: 100%; background: var(--accent-dim); border: 1px dashed var(--accent); border-radius: 8px; padding: 8px;
   color: var(--accent); font-family: var(--font); font-weight: 600; font-size: 12px; cursor: pointer; margin-top: 2px; transition: all 0.15s; }
-.cbm-root .add-btn:hover { background: rgba(0,212,170,0.22); }
+.cbm-root .add-btn:hover { background: rgba(212,169,81,0.22); }
 .cbm-root .section-divider { height: 1px; background: var(--panel-border); margin: 12px 0 10px; }
 .cbm-root .dim-factor-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .cbm-root .chip { background: var(--card-bg); border: 1px solid var(--panel-border); border-radius: 6px; padding: 6px 4px;
@@ -386,8 +450,8 @@ const CBM_CSS = `
 .cbm-root .cargo-box { position: relative; transform-style: preserve-3d; transform: rotateX(-24deg) rotateY(35deg);
   transition: width 0.4s cubic-bezier(0.34,1.3,0.64,1), height 0.4s cubic-bezier(0.34,1.3,0.64,1); animation: cbmFloat 5.5s ease-in-out infinite; }
 @keyframes cbmFloat { 0%,100% { transform: rotateX(-24deg) rotateY(35deg) translateY(0); } 50% { transform: rotateX(-24deg) rotateY(35deg) translateY(-9px); } }
-.cbm-root .face { position: absolute; border: 1.5px solid rgba(0,212,170,0.5); background: linear-gradient(145deg, rgba(0,212,170,0.22), rgba(0,70,55,0.08)); }
-.cbm-root[data-theme="light"] .face { border-color: rgba(0,168,138,0.45); background: linear-gradient(145deg, rgba(0,168,138,0.18), rgba(0,100,80,0.06)); }
+.cbm-root .face { position: absolute; border: 1.5px solid rgba(212,169,81,0.5); background: linear-gradient(145deg, rgba(212,169,81,0.22), rgba(0,70,55,0.08)); }
+.cbm-root[data-theme="light"] .face { border-color: rgba(212,169,81,0.45); background: linear-gradient(145deg, rgba(212,169,81,0.18), rgba(0,100,80,0.06)); }
 .cbm-root .front { width:100%; height:100%; transform: translateZ(calc(var(--bd)/2)); }
 .cbm-root .back { width:100%; height:100%; transform: rotateY(180deg) translateZ(calc(var(--bd)/2)); }
 .cbm-root .left { width:var(--bd); height:100%; transform: rotateY(-90deg) translateZ(calc(var(--bw)/2)); left:calc((100% - var(--bd))/2); }
@@ -406,7 +470,7 @@ const CBM_CSS = `
 .cbm-root .ring-value span { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--accent); }
 .cbm-root .ring-value small { font-size: 8px; color: var(--text-dim); }
 .cbm-root .pkg-summary { width: 100%; margin-top: 8px; font-size: 10px; color: var(--text-dim); text-align: center; }
-.cbm-root .result-card.primary { background: linear-gradient(145deg, var(--accent-dim), transparent); border: 1px solid rgba(0,212,170,0.25);
+.cbm-root .result-card.primary { background: linear-gradient(145deg, var(--accent-dim), transparent); border: 1px solid rgba(212,169,81,0.25);
   border-radius: 10px; padding: 12px; text-align: center; margin-bottom: 10px; }
 .cbm-root .result-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
 .cbm-root .result-value { font-family: var(--mono); font-size: 26px; font-weight: 600; color: var(--accent); line-height: 1.1; }
@@ -428,9 +492,9 @@ const CBM_CSS = `
 .cbm-root .curr-item { background: var(--card-bg); border-radius: 6px; padding: 5px 6px; }
 .cbm-root .curr-item .code { font-size: 8px; color: var(--text-dim); }
 .cbm-root .curr-item .amount { font-family: var(--mono); font-size: 11px; font-weight: 500; margin-top: 1px; }
-.cbm-root .copy-btn, .cbm-root .print-action { width: 100%; margin-top: 8px; background: var(--accent-dim); border: 1px solid rgba(0,212,170,0.3);
+.cbm-root .copy-btn, .cbm-root .print-action { width: 100%; margin-top: 8px; background: var(--accent-dim); border: 1px solid rgba(212,169,81,0.3);
   border-radius: 8px; padding: 8px; color: var(--accent); font-family: var(--font); font-weight: 600; font-size: 11px; cursor: pointer; transition: all 0.15s; }
-.cbm-root .copy-btn:hover, .cbm-root .print-action:hover { background: rgba(0,212,170,0.22); }
+.cbm-root .copy-btn:hover, .cbm-root .print-action:hover { background: rgba(212,169,81,0.22); }
 .cbm-root footer { text-align: center; padding: 4px 14px 16px; font-size: 10px; color: var(--text-dim); opacity: 0.45; }
 @media (max-width: 1180px) {
   .cbm-root main { grid-template-columns: 1fr; }
