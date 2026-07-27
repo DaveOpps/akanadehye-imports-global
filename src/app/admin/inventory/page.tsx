@@ -448,7 +448,7 @@ export default function InventoryPage() {
             </div>
           ) : (
             <>
-            <div className="overflow-hidden rounded-xl border border-[color:var(--border)] bg-white">
+            <div className="overflow-x-auto rounded-xl border border-[color:var(--border)] bg-white">
               <table className="w-full text-sm">
                 <thead className="bg-[color:var(--brand-cream)] text-xs uppercase tracking-wider text-[color:var(--muted)]">
                   <tr>
@@ -759,7 +759,7 @@ function AuditTrail() {
           {logs.length === 0 ? "No activity recorded yet. Changes to products will appear here." : "No events match your filters."}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[color:var(--border)] bg-white">
+        <div className="overflow-x-auto rounded-xl border border-[color:var(--border)] bg-white">
           <table className="w-full text-sm">
             <thead className="bg-[color:var(--brand-cream)] text-xs uppercase tracking-wider text-[color:var(--muted)]">
               <tr>
@@ -872,7 +872,7 @@ function Thumbnail({ src, alt, count }: { src?: string; alt: string; count?: num
 
 function SkeletonRows() {
   return (
-    <div className="overflow-hidden rounded-xl border border-[color:var(--border)] bg-white">
+    <div className="overflow-x-auto rounded-xl border border-[color:var(--border)] bg-white">
       {Array.from({ length: 4 }).map((_, i) => (
         <div key={i} className="px-4 py-4 border-b last:border-b-0 border-[color:var(--border)] flex gap-3 items-center animate-pulse">
           <div className="h-4 w-4 rounded bg-[color:var(--brand-cream)]" />

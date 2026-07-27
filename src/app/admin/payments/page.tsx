@@ -150,7 +150,7 @@ export default function PaymentsPage() {
           ) : items.length === 0 ? (
             <div className="card text-center text-[color:var(--muted)]">No payments recorded yet.</div>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-[color:var(--border)] bg-white">
+            <div className="overflow-x-auto rounded-xl border border-[color:var(--border)] bg-white">
               <table className="w-full text-sm">
                 <thead className="bg-[color:var(--brand-cream)] text-xs uppercase tracking-wider text-[color:var(--muted)]">
                   <tr>

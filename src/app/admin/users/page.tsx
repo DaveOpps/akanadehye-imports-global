@@ -48,8 +48,8 @@ export default async function UsersPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-[color:var(--border)] shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-xl border border-[color:var(--border)] shadow-sm overflow-x-auto">
+        <table className="w-full text-sm min-w-[560px]">
           <thead>
             <tr className="border-b border-[color:var(--border)] bg-[color:var(--brand-cream)]/50">
               <th className="text-left px-4 py-3 text-xs font-semibold text-[color:var(--muted)] uppercase tracking-wider">User</th>

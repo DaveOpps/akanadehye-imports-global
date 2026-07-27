@@ -58,7 +58,7 @@ export default function InvoicesPage() {
           No invoices yet. Create your first one to start tracking what you&apos;re owed.
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-[color:var(--border)] bg-white">
+        <div className="overflow-x-auto rounded-xl border border-[color:var(--border)] bg-white">
           <table className="w-full text-sm">
             <thead className="bg-[color:var(--brand-cream)] text-xs uppercase tracking-wider text-[color:var(--muted)]">
               <tr>

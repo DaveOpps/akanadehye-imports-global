@@ -397,7 +397,7 @@ export default function WhatsAppSetupPage() {
 
           <div className="card !p-4">
             <h3 className="font-bold text-sm mb-3">Cost comparison</h3>
-            <table className="w-full text-xs">
+            <div className="overflow-x-auto"><table className="w-full text-xs">
               <thead>
                 <tr className="text-[color:var(--muted)] border-b border-[color:var(--border)]">
                   <th className="text-left pb-1.5"></th>
@@ -419,7 +419,7 @@ export default function WhatsAppSetupPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
             <p className="text-[10px] text-[color:var(--muted)] mt-2">* Sandbox only. † Within free tier (1k convos/mo).</p>
           </div>
 

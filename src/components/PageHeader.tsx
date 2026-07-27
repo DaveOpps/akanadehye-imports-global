@@ -29,12 +29,12 @@ export default function PageHeader({
           ))}
         </nav>
       )}
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+      <div className="flex items-end justify-between gap-3 sm:gap-4 flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
           {subtitle && <p className="mt-1 text-[color:var(--muted)] text-sm md:text-base">{subtitle}</p>}
         </div>
-        {actions && <div className="flex gap-2 shrink-0">{actions}</div>}
+        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
       </div>
     </header>
   );
