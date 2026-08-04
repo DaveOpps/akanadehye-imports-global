@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { use, useEffect, useState } from "react";
-import { useOrders, shippingLabel, paymentLabel, statusLabel, type Order } from "@/lib/orders";
+import { useOrders, shippingLabel, paymentLabel, type Order } from "@/lib/orders";
 import { formatPrice } from "@/lib/products";
 
 type Params = Promise<{ id: string }>;
@@ -12,12 +12,37 @@ export default function ConfirmationPage({ params }: { params: Params }) {
   const { id } = use(params);
   const { items, hydrated } = useOrders();
   const [order, setOrder] = useState<Order | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     if (hydrated) {
       setOrder(items.find((o) => o.id === id) ?? null);
     }
   }, [hydrated, items, id]);
+
+  async function retryPayment() {
+    if (!order) return;
+    setRetrying(true);
+    try {
+      const res = await fetch("/api/payments/paystack/initialize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reference: order.id,
+          email: order.address.email,
+          amountGhs: order.total,
+          origin: window.location.origin,
+          metadata: { orderNumber: order.number, customer: order.address.fullName },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok && data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+        return;
+      }
+    } catch { /* ignore */ }
+    setRetrying(false);
+  }
 
   if (!hydrated) {
     return (
@@ -43,24 +68,55 @@ export default function ConfirmationPage({ params }: { params: Params }) {
 
   return (
     <div className="max-w-3xl mx-auto px-5 lg:px-8 py-10 lg:py-14">
-      {/* Success banner */}
-      <div className="text-center mb-10">
-        <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--brand-teal)] text-white mb-4">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-            <path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Order placed!</h1>
-        <p className="mt-2 text-[color:var(--muted)]">
-          Thank you, {order.address.fullName}. We&apos;ll send a confirmation to <strong>{order.address.email}</strong>.
-        </p>
-        <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-2 px-4 py-2 rounded-full bg-[color:var(--brand-cream)] text-sm">
-          <span className="text-[color:var(--muted)]">Order number:</span>
-          <span className="font-mono font-bold">{order.number}</span>
-          <span className="text-[color:var(--border)]">·</span>
-          <span className="badge badge-amber">{statusLabel(order.status)}</span>
-        </div>
-      </div>
+      {/* Status banner (payment-aware) */}
+      {(() => {
+        const pay = order.paymentStatus ?? "awaiting_payment";
+        const failed = pay === "failed";
+        const paid = pay === "paid";
+        const iconBg = failed ? "bg-[color:var(--brand-clay)]" : paid ? "bg-[color:var(--brand-teal)]" : "bg-[color:var(--brand-gold)]";
+        const heading = failed ? "Payment not completed" : paid ? "Payment received!" : "Order placed!";
+        const online = order.paymentMethod === "mobile-money" || order.paymentMethod === "card";
+        return (
+          <div className="text-center mb-10">
+            <div className={`inline-flex h-16 w-16 items-center justify-center rounded-full text-white mb-4 ${iconBg}`}>
+              {failed ? (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>
+              ) : paid ? (
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              ) : (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/><path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              )}
+            </div>
+            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">{heading}</h1>
+            <p className="mt-2 text-[color:var(--muted)]">
+              {failed
+                ? <>Your payment didn&apos;t go through. Your order <strong>{order.number}</strong> is saved — you can try again below.</>
+                : paid
+                ? <>Thank you, {order.address.fullName}. A confirmation was sent to <strong>{order.address.email}</strong>.</>
+                : online
+                ? <>Thank you, {order.address.fullName}. Complete payment to confirm order <strong>{order.number}</strong>.</>
+                : order.paymentMethod === "cash-on-delivery"
+                ? <>Thank you, {order.address.fullName}. Pay <strong>{formatPrice(order.total)}</strong> on delivery.</>
+                : <>Thank you, {order.address.fullName}. We&apos;ll share bank details to complete your <strong>{formatPrice(order.total)}</strong> payment.</>}
+            </p>
+            <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-2 px-4 py-2 rounded-full bg-[color:var(--brand-cream)] text-sm">
+              <span className="text-[color:var(--muted)]">Order number:</span>
+              <span className="font-mono font-bold">{order.number}</span>
+              <span className="text-[color:var(--border)]">·</span>
+              <span className={`badge ${paid ? "badge-green" : failed ? "badge-red" : "badge-amber"}`}>
+                {paid ? "Paid" : failed ? "Payment failed" : "Awaiting payment"}
+              </span>
+            </div>
+            {failed && (
+              <div className="mt-4">
+                <button onClick={retryPayment} disabled={retrying} className="btn-gold disabled:opacity-60">
+                  {retrying ? "Redirecting…" : `Retry payment · ${formatPrice(order.total)}`}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Receipt */}
       <div className="card space-y-5">
@@ -68,7 +124,8 @@ export default function ConfirmationPage({ params }: { params: Params }) {
           <div>
             <h2 className="font-bold text-lg">Receipt</h2>
             <p className="text-xs text-[color:var(--muted)]">
-              {new Date(order.createdAt).toLocaleString("en-GH")} · Ref {order.paymentReference}
+              {new Date(order.createdAt).toLocaleString("en-GH")}
+              {order.paymentReference ? ` · Ref ${order.paymentReference}` : ""}
             </p>
           </div>
           <button onClick={() => window.print()} className="btn-outline text-sm">
@@ -102,7 +159,7 @@ export default function ConfirmationPage({ params }: { params: Params }) {
             )}
             <Row label={`Shipping · ${shippingLabel(order.shippingMethod)}`} value={order.shipping === 0 ? "Free" : formatPrice(order.shipping)} />
             <div className="flex justify-between text-base pt-2 border-t border-[color:var(--border)]">
-              <dt className="font-bold">Total paid</dt>
+              <dt className="font-bold">{order.paymentStatus === "paid" ? "Total paid" : "Total due"}</dt>
               <dd className="font-bold">{formatPrice(order.total)}</dd>
             </div>
             <div className="text-xs text-[color:var(--muted)] pt-1">via {paymentLabel(order.paymentMethod)}</div>

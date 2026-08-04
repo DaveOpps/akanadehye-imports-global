@@ -28,6 +28,7 @@ export async function GET() {
       paymentMethod: r.paymentMethod,
       customerEmail: r.customerEmail ?? undefined,
       paymentReference: r.paymentReference ?? undefined,
+      paymentStatus: r.paymentStatus,
       couponCode: r.couponCode ?? undefined,
     }))
   );

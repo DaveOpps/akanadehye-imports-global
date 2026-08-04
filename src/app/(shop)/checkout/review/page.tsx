@@ -24,6 +24,7 @@ export default function ReviewStep() {
   const { draft, clearDraft, hydrated } = useCheckoutDraft();
   const { items: existingOrders, add: addOrder } = useOrders();
   const [placing, setPlacing] = useState(false);
+  const [payError, setPayError] = useState("");
 
   useEffect(() => {
     if (!hydrated) return;
@@ -47,11 +48,12 @@ export default function ReviewStep() {
   const ship = shippingCost(draft.shippingMethod, subtotal);
   const discount = draft.couponPct ? (subtotal * draft.couponPct) / 100 : 0;
   const total = Math.max(0, subtotal - discount + ship);
+  const isOnlinePay = draft.paymentMethod === "mobile-money" || draft.paymentMethod === "card";
 
   async function placeOrder() {
     setPlacing(true);
-    // Simulate processing
-    await new Promise((r) => setTimeout(r, 600));
+    setPayError("");
+    const addr = draft.address as ShippingAddress;
 
     const order: Order = {
       id: uid("ord"),
@@ -64,17 +66,53 @@ export default function ReviewStep() {
       tax: 0,
       discount,
       total,
-      address: draft.address as ShippingAddress,
+      address: addr,
       shippingMethod: draft.shippingMethod!,
       paymentMethod: draft.paymentMethod!,
-      paymentReference: `${draft.paymentMethod?.toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+      paymentStatus: "awaiting_payment",
       couponCode: draft.couponCode,
     };
 
-    addOrder(order);
+    // Persist the order first — the payment callback/webhook look it up by id.
+    const saved = await addOrder(order);
+    if (!saved) {
+      setPayError("We couldn't save your order. Please try again.");
+      setPlacing(false);
+      return;
+    }
+
+    // Route card / mobile-money through Paystack's hosted checkout.
+    const online = order.paymentMethod === "mobile-money" || order.paymentMethod === "card";
+    if (online) {
+      try {
+        const res = await fetch("/api/payments/paystack/initialize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reference: order.id,
+            email: addr.email,
+            amountGhs: total,
+            origin: window.location.origin,
+            metadata: { orderNumber: order.number, customer: addr.fullName },
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.ok && data.authorizationUrl) {
+          clear();
+          clearDraft();
+          window.location.href = data.authorizationUrl; // → Paystack (MoMo / card / bank)
+          return;
+        }
+        // 503 = gateway not configured yet → fall back to a pending order below.
+      } catch {
+        /* network issue — fall back to a pending order */
+      }
+    }
+
+    // Bank transfer, cash on delivery, or Paystack unavailable: order stands as
+    // "awaiting payment" and staff reconcile it.
     clear();
     clearDraft();
-
     router.push(`/checkout/confirmation/${order.id}`);
   }
 
@@ -146,8 +184,21 @@ export default function ReviewStep() {
           disabled={placing}
           className="w-full btn-gold justify-center disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {placing ? "Placing order…" : `Place order · ${formatPrice(total)}`}
+          {placing
+            ? "Processing…"
+            : isOnlinePay
+            ? `Pay securely · ${formatPrice(total)}`
+            : `Place order · ${formatPrice(total)}`}
         </button>
+
+        {payError && <p className="text-sm text-[color:var(--brand-clay)] text-center">{payError}</p>}
+
+        {isOnlinePay && (
+          <p className="text-[11px] text-[color:var(--muted)] text-center flex items-center justify-center gap-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M12 2l8 4v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-4z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/></svg>
+            Secured by Paystack · Mobile Money &amp; cards
+          </p>
+        )}
 
         <Link href="/checkout/payment" className="block text-center text-sm text-[color:var(--muted)] hover:text-[color:var(--brand-navy)]">
           ← Back to payment

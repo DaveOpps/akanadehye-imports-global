@@ -147,6 +147,7 @@ model Order {
   shippingMethod   String
   paymentMethod    String
   paymentReference String?
+  paymentStatus    String   @default("awaiting_payment") // awaiting_payment | paid | failed
   couponCode       String?
 
   @@index([userId, createdAt])

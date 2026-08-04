@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 }); }
 
   const data: Record<string, unknown> = {};
-  const simple = ["status", "paymentReference", "couponCode", "shippingMethod", "paymentMethod"];
+  const simple = ["status", "paymentReference", "paymentStatus", "couponCode", "shippingMethod", "paymentMethod"];
   for (const key of simple) { if (key in body) data[key] = body[key]; }
   if ("items" in body) data.items = typeof body.items === "string" ? body.items : JSON.stringify(body.items);
   if ("address" in body) data.address = typeof body.address === "string" ? body.address : JSON.stringify(body.address);

@@ -34,6 +34,7 @@ export type Order = {
   paymentMethod: CheckoutPaymentMethod;
   customerEmail?: string;
   paymentReference?: string;
+  paymentStatus?: "awaiting_payment" | "paid" | "failed";
   couponCode?: string;
 };
 
@@ -51,7 +52,7 @@ export function useOrders() {
       .catch(() => setHydrated(true));
   }, []);
 
-  const add = useCallback(async (order: Order) => {
+  const add = useCallback(async (order: Order): Promise<boolean> => {
     setItems((prev) => [order, ...prev]);
     try {
       const res = await fetch("/api/orders", {
@@ -59,9 +60,14 @@ export function useOrders() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(order),
       });
-      if (!res.ok) setItems((prev) => prev.filter((o) => o.id !== order.id));
+      if (!res.ok) {
+        setItems((prev) => prev.filter((o) => o.id !== order.id));
+        return false;
+      }
+      return true;
     } catch {
       setItems((prev) => prev.filter((o) => o.id !== order.id));
+      return false;
     }
   }, []);
 
