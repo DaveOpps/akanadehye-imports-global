@@ -38,12 +38,14 @@ function OrdersContent() {
 
   const statusFilter = (sp.get("status") as Order["status"] | null) ?? null;
   const [search, setSearch] = useState("");
+  const [payFilter, setPayFilter] = useState<"" | "paid" | "awaiting_payment" | "failed">("");
   const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter((o) => {
       if (statusFilter && o.status !== statusFilter) return false;
+      if (payFilter && (o.paymentStatus ?? "awaiting_payment") !== payFilter) return false;
       if (!q) return true;
       return (
         o.number.toLowerCase().includes(q) ||
@@ -52,7 +54,7 @@ function OrdersContent() {
         (o.customerEmail ?? "").toLowerCase().includes(q)
       );
     });
-  }, [items, statusFilter, search]);
+  }, [items, statusFilter, payFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -131,11 +133,24 @@ function OrdersContent() {
           ))}
         </select>
 
-        {(search || statusFilter) && (
+        <select
+          value={payFilter}
+          onChange={(e) => { setPayFilter(e.target.value as typeof payFilter); setPage(1); }}
+          aria-label="Filter by payment status"
+          className="input !w-auto text-sm"
+        >
+          <option value="">All payments ({items.length})</option>
+          <option value="paid">Paid ({items.filter((o) => o.paymentStatus === "paid").length})</option>
+          <option value="awaiting_payment">Awaiting ({items.filter((o) => (o.paymentStatus ?? "awaiting_payment") === "awaiting_payment").length})</option>
+          <option value="failed">Failed ({items.filter((o) => o.paymentStatus === "failed").length})</option>
+        </select>
+
+        {(search || statusFilter || payFilter) && (
           <button
             onClick={() => {
               setSearch("");
               setStatusFilter("");
+              setPayFilter("");
             }}
             className="text-xs font-semibold text-[color:var(--brand-clay)] hover:underline"
           >
