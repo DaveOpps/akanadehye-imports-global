@@ -20,6 +20,9 @@ const STATUS_BADGE: Record<Order["status"], string> = {
   cancelled: "badge-red",
 };
 
+const PAY_STATUS_BADGE: Record<string, string> = { paid: "badge-green", awaiting_payment: "badge-amber", failed: "badge-red" };
+const PAY_STATUS_LABEL: Record<string, string> = { paid: "Paid", awaiting_payment: "Awaiting", failed: "Failed" };
+
 export default function AdminOrdersPage() {
   return (
     <Suspense fallback={<div className="text-sm text-[color:var(--muted)]">Loading orders…</div>}>
@@ -59,6 +62,8 @@ function OrdersContent() {
   const revenue = items
     .filter((o) => o.status !== "cancelled")
     .reduce((n, o) => n + o.total, 0);
+  const collected = items.filter((o) => o.paymentStatus === "paid").reduce((n, o) => n + o.total, 0);
+  const awaitingPay = items.filter((o) => (o.paymentStatus ?? "awaiting_payment") === "awaiting_payment" && o.status !== "cancelled").length;
 
   function setStatusFilter(next: string) {
     setPage(1);
@@ -77,10 +82,11 @@ function OrdersContent() {
         subtitle="Manage customer orders — search, filter, and update statuses inline."
       />
 
-      <div className="grid gap-4 sm:grid-cols-3 mb-6">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
         <Mini label="Total orders" value={String(items.length)} />
-        <Mini label="Pending" value={String(pendingCount)} accent={pendingCount > 0 ? "amber" : undefined} />
-        <Mini label="Revenue (non-cancelled)" value={formatPrice(revenue)} />
+        <Mini label="Awaiting payment" value={String(awaitingPay)} accent={awaitingPay > 0 ? "amber" : undefined} />
+        <Mini label="Collected (paid)" value={formatPrice(collected)} accent="green" />
+        <Mini label="Order value (non-cancelled)" value={formatPrice(revenue)} />
       </div>
 
       {/* Toolbar */}
@@ -193,8 +199,11 @@ function OrdersContent() {
                       {o.items.reduce((n, i) => n + i.quantity, 0)}
                     </td>
                     <td className="px-4 py-3 text-right font-bold">{formatPrice(o.total)}</td>
-                    <td className="px-4 py-3 text-[color:var(--muted)] text-xs">
-                      {paymentLabel(o.paymentMethod)}
+                    <td className="px-4 py-3">
+                      <div className="text-xs text-[color:var(--muted)]">{paymentLabel(o.paymentMethod)}</div>
+                      <span className={`mt-1 inline-block badge ${PAY_STATUS_BADGE[o.paymentStatus ?? "awaiting_payment"] ?? "badge-gray"}`}>
+                        {PAY_STATUS_LABEL[o.paymentStatus ?? "awaiting_payment"] ?? "—"}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       {/* Inline status update — saves immediately */}
@@ -257,8 +266,8 @@ function OrdersContent() {
       )}
 
       <p className="mt-6 text-xs text-[color:var(--muted)]">
-        Orders are stored locally in this browser until the database migration lands — you&apos;ll see
-        orders placed from this browser&apos;s storefront.
+        Online (card / Mobile&nbsp;Money) orders show <span className="badge badge-green align-middle">Paid</span> once Paystack confirms
+        the payment; bank transfer &amp; cash-on-delivery stay <span className="badge badge-amber align-middle">Awaiting</span> until you reconcile them.
       </p>
     </div>
   );
@@ -279,11 +288,12 @@ function EmptyState() {
   );
 }
 
-function Mini({ label, value, accent }: { label: string; value: string; accent?: "amber" }) {
+function Mini({ label, value, accent }: { label: string; value: string; accent?: "amber" | "green" }) {
+  const color = accent === "amber" ? "text-amber-600" : accent === "green" ? "text-green-600" : "";
   return (
     <div className="card !p-4">
       <div className="text-xs uppercase tracking-wider text-[color:var(--muted)]">{label}</div>
-      <div className={`mt-1 text-xl font-bold ${accent === "amber" ? "text-amber-600" : ""}`}>{value}</div>
+      <div className={`mt-1 text-xl font-bold ${color}`}>{value}</div>
     </div>
   );
 }
