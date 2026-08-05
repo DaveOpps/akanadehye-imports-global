@@ -157,7 +157,7 @@ export default function ProductCartPanel({ product }: { product: Product }) {
 
             {/* In stock but also open for pre-order (e.g. reserve incoming batch) */}
             {product.preorderable && (
-              <div className="pt-1 border-t border-[color:var(--border)]">
+              <div className="pt-2">
                 <PreOrderPanel product={product} variant="secondary" />
               </div>
             )}

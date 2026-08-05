@@ -88,18 +88,42 @@ export default function PreOrderPanel({
   const btnClass =
     variant === "primary"
       ? "btn-gold w-full justify-center"
-      : "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[color:var(--brand-navy)] text-sm font-semibold text-[color:var(--brand-navy)] hover:bg-[color:var(--brand-cream)] transition";
+      : "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[color:var(--brand-navy)] text-white text-sm font-bold hover:bg-[color:var(--brand-navy-soft)] transition shadow-sm";
+
+  const clockIcon = (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 
   return (
     <>
-      <div className="space-y-1.5">
-        <button type="button" onClick={() => setOpen(true)} className={btnClass}>
-          Pre-order this item
-        </button>
-        <p className="text-xs text-[color:var(--muted)] text-center">
-          Full payment required · {eta ? `expected ${eta}` : `takes up to ${PREORDER_LEAD_WORKING_DAYS} working days`}
-        </p>
-      </div>
+      {variant === "secondary" ? (
+        <div className="rounded-xl border-2 border-[color:var(--brand-navy)]/20 bg-[color:var(--brand-cream)]/60 p-3.5 space-y-2.5">
+          <div className="flex items-center gap-1.5 text-[color:var(--brand-navy)]">
+            {clockIcon}
+            <span className="text-xs font-bold uppercase tracking-wide">Also open for pre-order</span>
+          </div>
+          <p className="text-xs text-[color:var(--muted)] leading-snug">
+            Want more than what&apos;s in stock, or reserve from the next batch? Full payment secures your order —{" "}
+            {eta ? `expected ${eta}` : `up to ${PREORDER_LEAD_WORKING_DAYS} working days`}.
+          </p>
+          <button type="button" onClick={() => setOpen(true)} className={btnClass}>
+            {clockIcon}
+            Pre-order this item
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          <button type="button" onClick={() => setOpen(true)} className={btnClass}>
+            Pre-order this item
+          </button>
+          <p className="text-xs text-[color:var(--muted)] text-center">
+            Full payment required · {eta ? `expected ${eta}` : `takes up to ${PREORDER_LEAD_WORKING_DAYS} working days`}
+          </p>
+        </div>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
