@@ -7,9 +7,6 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "i.dummyjson.com" },
       { protocol: "https", hostname: "dummyjson.com" },
     ],
-    // Our product photos are served from our own API route with a
-    // ?i=<index> query string — allow that for the optimizer.
-    localPatterns: [{ pathname: "/api/products/**" }],
   },
 };
 

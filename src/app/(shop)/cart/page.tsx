@@ -75,6 +75,7 @@ export default function CartPage() {
                           fill
                           sizes="96px"
                           className="object-contain p-2"
+                          unoptimized
                         />
                       </Link>
                       <div className="flex-1 min-w-0">
@@ -153,6 +154,7 @@ export default function CartPage() {
                           fill
                           sizes="80px"
                           className="object-contain p-2"
+                          unoptimized
                         />
                       </Link>
                       <div className="flex-1 min-w-0">

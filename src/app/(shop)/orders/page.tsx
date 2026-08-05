@@ -81,7 +81,7 @@ function OrderCard({ order }: { order: Order }) {
             key={i.id}
             className="relative h-14 w-14 shrink-0 bg-[color:var(--brand-cream)] rounded-lg overflow-hidden border border-[color:var(--border)]"
           >
-            <Image src={i.thumbnail} alt={i.title} fill sizes="56px" className="object-contain p-1" />
+            <Image src={i.thumbnail} alt={i.title} fill sizes="56px" className="object-contain p-1" unoptimized />
           </div>
         ))}
         {order.items.length > 6 && (
