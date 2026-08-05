@@ -54,7 +54,6 @@ export default function ProductRail({
                   fill
                   sizes="208px"
                   className="object-contain p-3 group-hover:scale-105 transition"
-                  unoptimized
                 />
                 {p.discountPercentage > 0 && (
                   <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-[color:var(--brand-clay)] text-white text-[10px] font-bold">

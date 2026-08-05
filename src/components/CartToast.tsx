@@ -54,7 +54,6 @@ export default function CartToast() {
             alt={notification.title}
             fill
             className="object-contain p-1"
-            unoptimized
           />
         </div>
         <div className="flex-1 min-w-0">

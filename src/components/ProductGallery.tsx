@@ -45,7 +45,6 @@ export default function ProductGallery({ images, alt }: { images: string[]; alt:
             fill
             sizes="(min-width: 1024px) 50vw, 100vw"
             className="object-contain p-8 transition duration-300 group-hover:scale-105"
-            unoptimized
             priority
           />
           {/* Zoom hint overlay */}
@@ -83,8 +82,7 @@ export default function ProductGallery({ images, alt }: { images: string[]; alt:
                   fill
                   sizes="20vw"
                   className="object-contain p-2 bg-[color:var(--brand-cream)]"
-                  unoptimized
-                />
+                      />
               </button>
             ))}
           </div>
@@ -165,8 +163,7 @@ export default function ProductGallery({ images, alt }: { images: string[]; alt:
               height={zoomed ? 1600 : undefined}
               sizes="95vw"
               className={zoomed ? "w-full h-auto" : "object-contain"}
-              unoptimized
-              priority
+                priority
             />
           </div>
 

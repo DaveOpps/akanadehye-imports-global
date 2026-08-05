@@ -123,7 +123,7 @@ export default function OrderDetailPage({ params }: { params: Params }) {
             {order.items.map((i) => (
               <li key={i.id} className="pt-3 first:pt-0 flex gap-3 items-center">
                 <Link href={`/products/${i.id}`} className="relative h-16 w-16 shrink-0 bg-[color:var(--brand-cream)] rounded-lg overflow-hidden">
-                  <Image src={i.thumbnail} alt={i.title} fill sizes="64px" className="object-contain p-1" unoptimized />
+                  <Image src={i.thumbnail} alt={i.title} fill sizes="64px" className="object-contain p-1" />
                 </Link>
                 <div className="flex-1 min-w-0">
                   <Link href={`/products/${i.id}`} className="text-sm font-medium hover:text-[color:var(--brand-clay)] line-clamp-2">

@@ -188,7 +188,6 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                       fill
                       sizes="(min-width: 1024px) 16vw, 33vw"
                       className="object-contain p-3 group-hover:scale-105 transition"
-                      unoptimized
                     />
                     {p.discountPercentage > 0 && (
                       <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-[color:var(--brand-clay)] text-white text-[10px] font-bold">

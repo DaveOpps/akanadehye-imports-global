@@ -3,6 +3,26 @@ import { prisma } from "@/lib/db";
 import type { Product, ProductsResponse } from "@/lib/products";
 import type { InventoryItem } from "@prisma/client";
 
+// Fields needed to render a product card/rail — deliberately excludes the
+// `images` column, which holds base64 photo data and can be megabytes per
+// row. Pulling that for every product in a listing (instead of just the one
+// product a customer opens) was the main cause of slow catalog pages.
+const LIST_SELECT = {
+  id: true,
+  sku: true,
+  name: true,
+  category: true,
+  price: true,
+  salePrice: true,
+  stock: true,
+  description: true,
+  tags: true,
+  preorderable: true,
+  expectedArrival: true,
+} as const;
+
+type ListInventoryItem = Pick<InventoryItem, keyof typeof LIST_SELECT>;
+
 function categoryToSlug(cat: string): string {
   return cat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
@@ -91,6 +111,43 @@ function itemToProduct(item: InventoryItem): Product {
   };
 }
 
+function itemToListProduct(item: ListInventoryItem): Product {
+  const tags: string[] = item.tags ? JSON.parse(item.tags) : [];
+
+  const listPrice = item.price;
+  const salePrice = item.salePrice;
+  const discountPct =
+    salePrice !== null && salePrice < listPrice
+      ? Math.round((1 - salePrice / listPrice) * 100)
+      : 0;
+
+  // We didn't fetch `images`, so we can't tell whether this item has a
+  // photo without pulling the whole blob — assume it does (true for the
+  // overwhelming majority of catalog items). The image route 404s harmlessly
+  // for the rare item with none.
+  const thumbnail = `/api/products/${item.id}/image?i=0`;
+
+  return {
+    id: item.id,
+    title: item.name,
+    description: item.description ?? "",
+    category: categoryToSlug(item.category),
+    price: listPrice,
+    discountPercentage: discountPct,
+    rating: 5.0,
+    stock: item.stock,
+    sku: item.sku,
+    brand: "Akanadehye Imports",
+    tags,
+    thumbnail,
+    images: [thumbnail],
+    reviews: [],
+    availabilityStatus: item.stock > 0 ? "In Stock" : "Out of Stock",
+    preorderable: item.preorderable,
+    expectedArrival: item.expectedArrival ? item.expectedArrival.toISOString() : null,
+  };
+}
+
 export async function getProducts(
   opts: {
     category?: string;
@@ -141,25 +198,39 @@ export async function getProducts(
       ? { name: order === "desc" ? ("desc" as const) : ("asc" as const) }
       : { updatedAt: "desc" as const };
 
-  let items = await prisma.inventoryItem.findMany({
-    where: baseWhere,
-    orderBy,
-  });
-
-  // Apply price filter in-process so sale prices are respected
+  // Sale prices need in-process filtering (effective price = salePrice ?? price),
+  // which requires the full matching set — everything else can page at the DB level.
   if (minPrice !== undefined || maxPrice !== undefined) {
+    let items = await prisma.inventoryItem.findMany({
+      where: baseWhere,
+      orderBy,
+      select: LIST_SELECT,
+    });
+
     items = items.filter((item) => {
       const effective = item.salePrice ?? item.price;
       if (minPrice !== undefined && effective < minPrice) return false;
       if (maxPrice !== undefined && effective > maxPrice) return false;
       return true;
     });
+
+    const total = items.length;
+    const page = items.slice(skip, skip + limit);
+    return { products: page.map(itemToListProduct), total, skip, limit };
   }
 
-  const total = items.length;
-  const page = items.slice(skip, skip + limit);
+  const [items, total] = await Promise.all([
+    prisma.inventoryItem.findMany({
+      where: baseWhere,
+      orderBy,
+      select: LIST_SELECT,
+      skip,
+      take: limit,
+    }),
+    prisma.inventoryItem.count({ where: baseWhere }),
+  ]);
 
-  return { products: page.map(itemToProduct), total, skip, limit };
+  return { products: items.map(itemToListProduct), total, skip, limit };
 }
 
 export async function getProduct(id: string | number): Promise<Product | null> {
@@ -184,6 +255,7 @@ export async function getRelatedProducts(
     },
     take: limit,
     orderBy: { updatedAt: "desc" },
+    select: LIST_SELECT,
   });
-  return items.map(itemToProduct);
+  return items.map(itemToListProduct);
 }

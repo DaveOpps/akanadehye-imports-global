@@ -121,7 +121,7 @@ export default function AdminOrderDetailPage({ params }: { params: Params }) {
               {order.items.map((item) => (
                 <li key={item.id} className="pt-3 first:pt-0 flex gap-3 items-center">
                   <div className="relative h-16 w-16 shrink-0 bg-[color:var(--brand-cream)] rounded-lg overflow-hidden border border-[color:var(--border)]">
-                    <Image src={item.thumbnail} alt={item.title} fill sizes="64px" className="object-contain p-1" unoptimized />
+                    <Image src={item.thumbnail} alt={item.title} fill sizes="64px" className="object-contain p-1" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-[color:var(--brand-navy)] line-clamp-2">{item.title}</div>

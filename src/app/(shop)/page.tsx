@@ -1,4 +1,6 @@
-export const dynamic = "force-dynamic";
+// Revalidate every 60s instead of rebuilding on every visit — the 5 product
+// queries this page fires don't need to be paid for by every single visitor.
+export const revalidate = 60;
 
 import Link from "next/link";
 import { getProducts } from "@/lib/shop-products";

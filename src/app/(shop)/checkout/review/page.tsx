@@ -150,7 +150,7 @@ export default function ReviewStep() {
             {items.map((i) => (
               <li key={i.id} className="flex gap-3 items-center">
                 <div className="relative h-14 w-14 shrink-0 bg-[color:var(--brand-cream)] rounded-lg overflow-hidden">
-                  <Image src={i.thumbnail} alt={i.title} fill sizes="56px" className="object-contain p-1" unoptimized />
+                  <Image src={i.thumbnail} alt={i.title} fill sizes="56px" className="object-contain p-1" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{i.title}</div>
