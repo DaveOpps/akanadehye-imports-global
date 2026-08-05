@@ -494,7 +494,21 @@ export default function InventoryPage() {
                           <Thumbnail src={i.images?.[0]} alt={i.name} count={i.images?.length} />
                         </td>
                         <td className="px-3 py-3 min-w-56">
-                          <div className="font-medium">{i.name}</div>
+                          <div className="flex items-center gap-1.5">
+                            <div className="font-medium">{i.name}</div>
+                            {i.preorderable && (
+                              <span
+                                title="Customers can pre-order this item"
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[color:var(--brand-navy)] text-[color:var(--brand-gold)] shrink-0"
+                              >
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" aria-hidden>
+                                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                                  <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                                Pre-order
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[10px] text-[color:var(--muted)] font-mono mt-0.5">
                             {i.sku}
                           </div>
