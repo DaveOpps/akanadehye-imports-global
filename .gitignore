@@ -49,3 +49,6 @@ next-env.d.ts
 
 # one-off bulk product upload scripts (local only)
 /_upload/
+
+.vercel
+.env*
