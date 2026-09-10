@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendOrderNotification } from "@/lib/notify";
+import { auth } from "@/auth";
+
+async function isStaff(): Promise<boolean> {
+  const session = await auth();
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  return !!role && role !== "customer";
+}
 
 const STATUS_MESSAGES: Record<string, { title: string; body: string }> = {
   confirmed: {
@@ -26,8 +33,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 }); }
 
+  // paymentStatus/paymentReference are deliberately excluded — those are only
+  // ever set by the Paystack callback/webhook after a verified payment
+  // (src/lib/paymentFulfill.ts). Letting them through here would mean anyone
+  // who can reach this endpoint could mark any order "paid" directly.
   const data: Record<string, unknown> = {};
-  const simple = ["status", "paymentReference", "paymentStatus", "couponCode", "shippingMethod", "paymentMethod"];
+  const simple = ["status", "couponCode", "shippingMethod", "paymentMethod"];
   for (const key of simple) { if (key in body) data[key] = body[key]; }
   if ("items" in body) data.items = typeof body.items === "string" ? body.items : JSON.stringify(body.items);
   if ("address" in body) data.address = typeof body.address === "string" ? body.address : JSON.stringify(body.address);
@@ -74,6 +85,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await isStaff())) {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
   const { id } = await params;
   try {
     await prisma.order.delete({ where: { id } });

@@ -18,10 +18,18 @@ export async function GET(req: NextRequest) {
 
   const result = await verifyTransaction(reference);
   if (result.ok && result.paid) {
-    await markOrderPaidByReference(reference);
+    await markOrderPaidByReference(reference, result.amountGhs);
     return NextResponse.redirect(`${origin}/checkout/confirmation/${reference}?paid=1`);
   }
 
-  await markOrderFailedByReference(reference);
-  return NextResponse.redirect(`${origin}/checkout/confirmation/${reference}?paid=0`);
+  if (result.ok && !result.paid) {
+    // Paystack confirms the transaction did not succeed (failed/abandoned).
+    await markOrderFailedByReference(reference);
+    return NextResponse.redirect(`${origin}/checkout/confirmation/${reference}?paid=0`);
+  }
+
+  // Verification itself errored (network/API issue) — we don't know whether
+  // the payment actually went through, so don't mark the order failed. The
+  // webhook is the authoritative backstop and will catch up when it arrives.
+  return NextResponse.redirect(`${origin}/checkout/confirmation/${reference}?paid=unknown`);
 }

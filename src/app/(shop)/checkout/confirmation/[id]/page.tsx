@@ -30,7 +30,6 @@ export default function ConfirmationPage({ params }: { params: Params }) {
         body: JSON.stringify({
           reference: order.id,
           email: order.address.email,
-          amountGhs: order.total,
           origin: window.location.origin,
           metadata: { orderNumber: order.number, customer: order.address.fullName },
         }),

@@ -91,7 +91,6 @@ export default function ReviewStep() {
           body: JSON.stringify({
             reference: order.id,
             email: addr.email,
-            amountGhs: total,
             origin: window.location.origin,
             metadata: { orderNumber: order.number, customer: addr.fullName },
           }),

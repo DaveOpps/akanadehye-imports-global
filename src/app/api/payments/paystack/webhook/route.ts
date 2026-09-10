@@ -15,11 +15,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Invalid signature" }, { status: 401 });
   }
 
-  let event: { event?: string; data?: { reference?: string } };
+  let event: { event?: string; data?: { reference?: string; amount?: number } };
   try { event = JSON.parse(raw); } catch { return NextResponse.json({ ok: false }, { status: 400 }); }
 
-  if (event.event === "charge.success" && event.data?.reference) {
-    await markOrderPaidByReference(event.data.reference);
+  if (event.event === "charge.success" && event.data?.reference && typeof event.data.amount === "number") {
+    await markOrderPaidByReference(event.data.reference, event.data.amount / 100);
   }
 
   // Always 200 so Paystack stops retrying (we've recorded what we can).
