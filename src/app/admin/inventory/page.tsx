@@ -104,6 +104,14 @@ export default function InventoryPage() {
     return Array.from(set.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [items]);
 
+  // Lets the Audit Trail jump straight to the product an event refers to.
+  // Deleted products won't be in here, so their rows stay unclickable.
+  const itemById = useMemo(() => {
+    const m = new Map<string, InventoryItem>();
+    for (const i of items) m.set(i.id, i);
+    return m;
+  }, [items]);
+
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     let out = items.filter((i) => {
@@ -343,7 +351,7 @@ export default function InventoryPage() {
       </div>
 
       {tab === "audit" ? (
-        <AuditTrail />
+        <AuditTrail findProduct={(id) => itemById.get(id)} onOpenProduct={setViewing} />
       ) : !hydrated ? (
         <SkeletonRows />
       ) : items.length === 0 ? (
@@ -710,7 +718,70 @@ function AuditDiff({ before, after, action }: { before: string | null; after: st
   );
 }
 
-function AuditTrail() {
+/**
+ * The product an audit event refers to. Clicking it opens the same preview
+ * panel the Products tab uses, so you can jump from "what changed" straight to
+ * the product without hunting for it. Products that have since been deleted
+ * (or that aren't loaded) render as plain text — no dead links.
+ */
+function AuditProductCell({
+  log,
+  findProduct,
+  onOpenProduct,
+}: {
+  log: AuditLog;
+  findProduct: (id: string) => InventoryItem | undefined;
+  onOpenProduct: (item: InventoryItem) => void;
+}) {
+  const product = findProduct(log.entityId);
+  const name = log.entityName ?? "—";
+
+  if (!product) {
+    return (
+      <div>
+        <div className="font-medium text-[color:var(--muted)]">{name}</div>
+        {log.entitySku && (
+          <div className="text-[10px] font-mono text-[color:var(--muted)] mt-0.5">{log.entitySku}</div>
+        )}
+        <div className="text-[10px] text-[color:var(--muted)] mt-0.5 italic">No longer in inventory</div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpenProduct(product)}
+      title="Open this product"
+      className="group text-left w-full"
+    >
+      <div className="font-medium text-[color:var(--brand-navy)] group-hover:underline">
+        {name}
+        <svg
+          aria-hidden="true"
+          className="inline-block ml-1 -mt-0.5 opacity-0 group-hover:opacity-100 transition"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <path d="M7 17L17 7M17 7H9M17 7v8" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      {log.entitySku && (
+        <div className="text-[10px] font-mono text-[color:var(--muted)] mt-0.5">{log.entitySku}</div>
+      )}
+    </button>
+  );
+}
+
+function AuditTrail({
+  findProduct,
+  onOpenProduct,
+}: {
+  findProduct: (id: string) => InventoryItem | undefined;
+  onOpenProduct: (item: InventoryItem) => void;
+}) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -797,10 +868,7 @@ function AuditTrail() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-[color:var(--brand-navy)]">{log.entityName ?? "—"}</div>
-                    {log.entitySku && (
-                      <div className="text-[10px] font-mono text-[color:var(--muted)] mt-0.5">{log.entitySku}</div>
-                    )}
+                    <AuditProductCell log={log} findProduct={findProduct} onOpenProduct={onOpenProduct} />
                   </td>
                   <td className="px-4 py-3 max-w-xs">
                     <AuditDiff before={log.before} after={log.after} action={log.action} />
