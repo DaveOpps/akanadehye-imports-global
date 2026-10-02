@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { getProducts } from "@/lib/shop-products";
+import { PREORDER_LEAD_WORKING_DAYS } from "@/lib/dates";
 import { UMBRELLA_CATEGORIES } from "@/lib/storefront-categories";
 import CategoryRail from "@/components/CategoryRail";
 import PromoStrip from "@/components/PromoStrip";
@@ -74,27 +75,85 @@ export default async function Home() {
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-[color:var(--brand-navy)]/85 via-[color:var(--brand-navy)]/70 to-[color:var(--brand-navy)]/85" />
 
         <div className="relative max-w-7xl mx-auto px-5 lg:px-8 py-16 lg:py-24 text-center text-white">
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/20 text-sm font-medium mb-5">
-            <span className="h-2 w-2 rounded-full bg-[color:var(--brand-gold)]" />
-            200+ product categories
+          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[color:var(--brand-gold)] text-[color:var(--brand-navy)] text-xs md:text-sm font-extrabold uppercase tracking-[0.12em] mb-5 shadow-lg">
+            <span className="h-2 w-2 rounded-full bg-[color:var(--brand-navy)]" />
+            Pre-order import service
           </span>
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05] max-w-4xl mx-auto drop-shadow-lg">
-            One Platform. Everything You Need to Shop.
+            We Import It For You. Pre-Order Today.
           </h1>
-          <p className="mt-5 text-base md:text-lg text-white/85 max-w-2xl mx-auto leading-relaxed">
-            Discover, compare, and buy across electronics, fashion, beauty, and more — all in one place.
+          <p className="mt-5 text-base md:text-lg text-white/90 max-w-2xl mx-auto leading-relaxed">
+            Akanadehye is an <strong className="font-semibold text-white">importing service, not a walk-in shop</strong>.
+            You reserve what you need, we source and ship it in — typically within{" "}
+            {PREORDER_LEAD_WORKING_DAYS} working days.
+          </p>
+          <p className="mt-3 text-sm text-white/75 max-w-2xl mx-auto">
+            Some items are already in stock and ship immediately. Everything else is pre-order.
           </p>
           <div className="mt-7 flex flex-wrap gap-3 justify-center">
             <Link href="/products" className="btn-gold">
-              Start Shopping →
+              Start a pre-order →
             </Link>
             <Link
-              href="/#categories"
+              href="/#how-it-works"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-lg border-2 border-white/80 text-white font-semibold hover:bg-white hover:text-[color:var(--brand-navy)] transition"
             >
-              Browse categories
+              How pre-ordering works
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* HOW PRE-ORDERING WORKS — sits directly under the hero on purpose.
+          The business is an import/sourcing service, so the model has to be
+          unmissable before anyone starts browsing like it's a normal shop. */}
+      <section id="how-it-works" className="bg-[color:var(--brand-navy)] text-white scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-5 lg:px-8 py-10 lg:py-14">
+          <div className="text-center max-w-3xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">
+              How pre-ordering works
+            </h2>
+            <p className="mt-3 text-white/80 text-sm md:text-base leading-relaxed">
+              Most of what you see here is <strong className="text-[color:var(--brand-gold)] font-semibold">brought in to order</strong>.
+              You are reserving stock from our next shipment, not buying off a shelf.
+            </p>
+          </div>
+
+          <ol className="mt-8 grid gap-4 md:grid-cols-3">
+            {[
+              {
+                n: "1",
+                title: "Reserve your item",
+                body: "Pick what you need and place a pre-order. Full payment up front is what secures your slot in the shipment.",
+              },
+              {
+                n: "2",
+                title: "We source and ship",
+                body: "Our team buys direct, consolidates your item into the next container, and handles clearing on arrival.",
+              },
+              {
+                n: "3",
+                title: "Collect or get it delivered",
+                body: `Typically ${PREORDER_LEAD_WORKING_DAYS} working days from payment. We contact you the moment it lands.`,
+              },
+            ].map((step) => (
+              <li
+                key={step.n}
+                className="rounded-xl bg-white/5 border border-white/15 p-5 backdrop-blur"
+              >
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--brand-gold)] text-[color:var(--brand-navy)] font-extrabold">
+                  {step.n}
+                </span>
+                <div className="mt-3 font-semibold text-base">{step.title}</div>
+                <p className="mt-1.5 text-sm text-white/75 leading-relaxed">{step.body}</p>
+              </li>
+            ))}
+          </ol>
+
+          <p className="mt-6 text-center text-sm text-white/70">
+            Items marked <strong className="text-white font-semibold">In stock</strong> are already
+            in Ghana and ship straight away — everything else follows the timeline above.
+          </p>
         </div>
       </section>
 
@@ -104,7 +163,7 @@ export default async function Home() {
       <section id="categories" className="max-w-7xl mx-auto px-3 lg:px-8 pt-10 pb-4 space-y-10">
         <div className="flex items-center justify-between">
           <h2 className="text-xl md:text-2xl font-bold text-[color:var(--brand-navy)]">
-            Shop by Category
+            Browse what we source
           </h2>
           <Link
             href="/products"
