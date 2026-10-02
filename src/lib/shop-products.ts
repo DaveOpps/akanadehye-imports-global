@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import type { Product, ProductsResponse } from "@/lib/products";
-import type { InventoryItem } from "@prisma/client";
+import type { InventoryItem, Prisma } from "@prisma/client";
 
 function categoryToSlug(cat: string): string {
   return cat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -119,20 +119,40 @@ export async function getProducts(
     ? (SLUG_CATEGORIES[category] ?? null)
     : null;
 
-  const baseWhere = {
-    ...(categoryFilter ? { category: { in: categoryFilter } } : {}),
-    ...(q
-      ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" as const } },
-            { description: { contains: q, mode: "insensitive" as const } },
-            { tags: { contains: q, mode: "insensitive" as const } },
-            { category: { contains: q, mode: "insensitive" as const } },
-            { sku: { contains: q, mode: "insensitive" as const } },
-          ],
-        }
-      : {}),
-  };
+  // Collected under AND so the search clause and the price clause can each
+  // carry their own OR without one overwriting the other.
+  const clauses: Prisma.InventoryItemWhereInput[] = [];
+
+  if (categoryFilter) clauses.push({ category: { in: categoryFilter } });
+
+  if (q) {
+    clauses.push({
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+        { tags: { contains: q, mode: "insensitive" } },
+        { category: { contains: q, mode: "insensitive" } },
+        { sku: { contains: q, mode: "insensitive" } },
+      ],
+    });
+  }
+
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    const range = {
+      ...(minPrice !== undefined ? { gte: minPrice } : {}),
+      ...(maxPrice !== undefined ? { lte: maxPrice } : {}),
+    };
+    // Filter on the price actually charged — salePrice when set, else price.
+    // This used to be done in JS, which is why every row had to be fetched.
+    clauses.push({
+      OR: [
+        { salePrice: { not: null, ...range } },
+        { salePrice: null, price: range },
+      ],
+    });
+  }
+
+  const where: Prisma.InventoryItemWhereInput = clauses.length ? { AND: clauses } : {};
 
   const orderBy =
     sort === "price"
@@ -141,23 +161,12 @@ export async function getProducts(
       ? { name: order === "desc" ? ("desc" as const) : ("asc" as const) }
       : { updatedAt: "desc" as const };
 
-  let items = await prisma.inventoryItem.findMany({
-    where: baseWhere,
-    orderBy,
-  });
-
-  // Apply price filter in-process so sale prices are respected
-  if (minPrice !== undefined || maxPrice !== undefined) {
-    items = items.filter((item) => {
-      const effective = item.salePrice ?? item.price;
-      if (minPrice !== undefined && effective < minPrice) return false;
-      if (maxPrice !== undefined && effective > maxPrice) return false;
-      return true;
-    });
-  }
-
-  const total = items.length;
-  const page = items.slice(skip, skip + limit);
+  // Page at the database rather than fetching every matching row and slicing
+  // in JS — the homepage alone fires five of these.
+  const [total, page] = await Promise.all([
+    prisma.inventoryItem.count({ where }),
+    prisma.inventoryItem.findMany({ where, orderBy, skip, take: limit }),
+  ]);
 
   return { products: page.map(itemToProduct), total, skip, limit };
 }
