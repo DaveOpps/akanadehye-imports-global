@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useCart } from "./CartContext";
-import { formatPrice, discountedPrice, type Product } from "@/lib/products";
+import { formatPrice, discountedPrice, isPreOrder, type Product } from "@/lib/products";
+import { preorderLeadLabel } from "./PreOrderBadge";
+import { SHIPPING_SPEEDS } from "@/lib/dates";
 import PreOrderPanel from "./PreOrderPanel";
 
 const WISHLIST_KEY = "akanadehye-wishlist-v1";
@@ -67,6 +69,8 @@ export default function ProductCartPanel({ product }: { product: Product }) {
   const price = discountedPrice(product);
   const maxQty = Math.max(1, product.stock);
   const outOfStock = product.stock <= 0;
+  // Imported to order unless staff marked this as held in Ghana.
+  const preorder = isPreOrder(product);
   const inCart = items.find((i) => i.id === product.id);
 
   function handleAdd() {
@@ -101,24 +105,42 @@ export default function ProductCartPanel({ product }: { product: Product }) {
           )}
         </div>
 
+        {/* An imported item is a pre-order whatever the stock figure says.
+            A green "In stock" pill here directly contradicted the red
+            Pre-order tag the customer clicked through from. */}
         <div className="flex items-center gap-2 text-sm">
-          <span
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${
-              outOfStock
-                ? "bg-red-100 text-red-700"
+          {preorder ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#dc2626] text-white font-semibold">
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              Pre-order · {preorderLeadLabel()}
+            </span>
+          ) : (
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${
+                outOfStock
+                  ? "bg-red-100 text-red-700"
+                  : product.stock <= 5
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-green-100 text-green-800"
+              }`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              {outOfStock
+                ? "Out of stock"
                 : product.stock <= 5
-                ? "bg-amber-100 text-amber-800"
-                : "bg-green-100 text-green-800"
-            }`}
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-current" />
-            {outOfStock
-              ? "Out of stock"
-              : product.stock <= 5
-              ? `Only ${product.stock} left`
-              : "In stock"}
-          </span>
+                ? `Only ${product.stock} left`
+                : "In stock — ships now"}
+            </span>
+          )}
         </div>
+
+        {preorder && (
+          <p className="text-xs text-[color:var(--muted)] leading-relaxed">
+            This item is <strong className="text-[color:var(--brand-navy)]">imported to order</strong>.
+            Full payment secures your place in the shipment and the countdown starts
+            from there — {SHIPPING_SPEEDS.air.short} by air, {SHIPPING_SPEEDS.sea.short} by sea.
+          </p>
+        )}
 
         {!outOfStock && (
           <>
@@ -146,7 +168,9 @@ export default function ProductCartPanel({ product }: { product: Product }) {
             </div>
 
             <button onClick={handleAdd} className="btn-gold w-full justify-center">
-              {flash ? "✓ Added to cart" : `Add to cart · ${formatPrice(price * qty)}`}
+              {flash
+                ? "✓ Added to cart"
+                : `${preorder ? "Pre-order" : "Add to cart"} · ${formatPrice(price * qty)}`}
             </button>
 
             {inCart && (
@@ -174,10 +198,20 @@ export default function ProductCartPanel({ product }: { product: Product }) {
           ))}
       </div>
 
-      {/* Trust badges */}
+      {/* Trust badges — these described an ordinary online shop: free shipping
+          over $50 (dollars, on a cedi-priced site, for goods crossing an
+          ocean) and no-questions 30-day returns on custom imports. */}
       <div className="rounded-xl border border-[color:var(--border)] bg-white p-4 space-y-3 text-sm">
-        <TrustRow icon="truck" title="Free shipping" body="On orders over $50" />
-        <TrustRow icon="return" title="30-day returns" body="Hassle-free, no questions asked" />
+        <TrustRow
+          icon="truck"
+          title={preorder ? "Imported to order" : "Ships from our Ghana stock"}
+          body={
+            preorder
+              ? `${SHIPPING_SPEEDS.air.short} by air, ${SHIPPING_SPEEDS.sea.short} by sea`
+              : "Held here and dispatched right away"
+          }
+        />
+        <TrustRow icon="clock" title="Full payment secures it" body="Reserves your place in the shipment" />
         <TrustRow icon="shield" title="Secure checkout" body="256-bit encrypted payments" />
       </div>
 
@@ -258,6 +292,7 @@ function TrustRow({ icon, title, body }: { icon: string; title: string; body: st
     truck: <path d="M3 7h11v10H3zM14 11h5l2 3v3h-7M7 20a2 2 0 100-4 2 2 0 000 4zM17 20a2 2 0 100-4 2 2 0 000 4z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />,
     return: <path d="M3 12a9 9 0 109-9v3M3 12l3-3m-3 3l3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
     shield: <path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />,
+    clock: <path d="M12 21a9 9 0 100-18 9 9 0 000 18zM12 7v5l3.5 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
   };
   return (
     <div className="flex items-start gap-2.5">

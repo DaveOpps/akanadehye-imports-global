@@ -76,8 +76,11 @@ export default function PaymentStep() {
                     </span>
                     <div>
                       <div className="font-semibold text-sm">{shippingLabel(m)}</div>
+                      {/* Threshold is a cedi amount; it was labelled in dollars. */}
                       {m === "standard" && subtotal < 50 && (
-                        <div className="text-xs text-[color:var(--muted)]">Free over $50</div>
+                        <div className="text-xs text-[color:var(--muted)]">
+                          Free over {formatPrice(50)}
+                        </div>
                       )}
                       {m === "pickup" && (
                         <div className="text-xs text-[color:var(--muted)]">Pick up from our Tema warehouse</div>
