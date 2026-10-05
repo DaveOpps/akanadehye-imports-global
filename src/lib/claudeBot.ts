@@ -100,7 +100,7 @@ const searchProductsTool = betaZodTool({
           price: formatPrice(p.price),
           discount_percent: p.discountPercentage,
           rating: p.rating,
-          stock: p.stock,
+          status: p.stockedLocally ? "in-stock-ships-now" : "pre-order",
           description: p.description.slice(0, 160),
         })),
       });
@@ -156,8 +156,18 @@ const searchMerchantInventoryTool = betaZodTool({
           category: i.category,
           price: `GHS ${i.price.toFixed(2)}`,
           salePrice: i.salePrice ? `GHS ${i.salePrice.toFixed(2)}` : null,
-          stock: i.stock,
-          status: i.stock === 0 ? "out-of-stock" : i.stock <= i.reorderAt ? "low-stock" : "in-stock",
+          // Report how the storefront actually presents the item. The raw
+          // stock figure says every product is held, which is not what the
+          // business does — surfacing it made the assistant tell customers
+          // things were "in stock" when they are imported to order.
+          status: i.stockedLocally
+            ? i.stock === 0
+              ? "out-of-stock"
+              : "in-stock-ships-now"
+            : "pre-order",
+          fulfilment: i.stockedLocally
+            ? "Held in Ghana, ships immediately."
+            : `Imported to order: ${SHIPPING_SPEEDS.air.short} by air or ${SHIPPING_SPEEDS.sea.short} by sea, from the day full payment clears.`,
           description: i.description?.slice(0, 200) ?? null,
           tags: i.tags ? JSON.parse(i.tags) : [],
         })),
@@ -241,7 +251,7 @@ function buildSystemPrompt(persona: Required<Persona>): string {
     "",
     "## Response rules",
     "- Keep replies under 6 sentences unless you're listing products.",
-    "- When listing products, format each line as: `1. Title — Price · ★Rating · Nstock`.",
+    "- When listing products, format each line as: `1. Title — Price · Pre-order` (or `· In stock, ships now` when the tool says in-stock-ships-now). Never quote a stock count, and never describe a pre-order item as being in stock.",
     "- Don't promise specific delivery times — say 'we'll confirm at checkout' instead.",
     "- Don't process payments or take card numbers — direct customers to the website to check out.",
     "- If a customer asks about something you can't verify with a tool, say you'd like to connect them to a human and call `escalate_to_human`.",
