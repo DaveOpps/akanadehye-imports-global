@@ -19,8 +19,15 @@ export default async function CategoryPage({ params }: { params: Params }) {
   const { slug } = await params;
   const umbrella = findUmbrellaForSlug(slug);
 
-  // Only render for umbrella primary slugs — sub-slugs 404
-  if (!umbrella || umbrella.primarySlug !== slug) notFound();
+  // Sub-category slugs used to 404 here even though findUmbrellaForSlug
+  // resolves them, which broke 263 of the 275 links in the sidebar.
+  if (!umbrella) notFound();
+
+  // The sub-category the visitor actually clicked, when it wasn't the umbrella.
+  const subItem =
+    umbrella.primarySlug === slug
+      ? null
+      : umbrella.groups.flatMap((g) => g.items).find((i) => i.slug === slug) ?? null;
 
   return (
     <div className="max-w-7xl mx-auto px-5 lg:px-8 py-10 lg:py-14">
@@ -33,7 +40,20 @@ export default async function CategoryPage({ params }: { params: Params }) {
         <span className="text-[color:var(--border)]">/</span>
         <Link href="/products" className="hover:text-[color:var(--brand-navy)]">Shop</Link>
         <span className="text-[color:var(--border)]">/</span>
-        <span className="text-[color:var(--brand-navy)] font-medium">{umbrella.label}</span>
+        {subItem ? (
+          <>
+            <Link
+              href={`/categories/${umbrella.primarySlug}`}
+              className="hover:text-[color:var(--brand-navy)]"
+            >
+              {umbrella.label}
+            </Link>
+            <span className="text-[color:var(--border)]">/</span>
+            <span className="text-[color:var(--brand-navy)] font-medium">{subItem.label}</span>
+          </>
+        ) : (
+          <span className="text-[color:var(--brand-navy)] font-medium">{umbrella.label}</span>
+        )}
       </nav>
 
       <div className="grid lg:grid-cols-[280px_1fr] gap-8">

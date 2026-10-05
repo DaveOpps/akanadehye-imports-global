@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import type { Product, ProductsResponse } from "@/lib/products";
 import type { InventoryItem, Prisma } from "@prisma/client";
+import { UMBRELLA_CATEGORIES } from "@/lib/storefront-categories";
 
 function categoryToSlug(cat: string): string {
   return cat.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -49,6 +50,64 @@ const SLUG_CATEGORIES: Record<string, string[]> = {
   "building-security":  ["Security Doors & Gates", "Building Materials"],
   "machinery-equipment":["Agricultural Machinery", "Food Processing Machines"],
 };
+
+/**
+ * Turn a storefront URL slug into something the database can be filtered by.
+ *
+ * The sidebar links to 275 slugs; only 38 have a direct inventory-category
+ * mapping. Everything else used to fall through to "no filter", so a
+ * sub-category either 404'd or quietly listed the entire catalogue.
+ *
+ * Resolution order:
+ *  1. An exact SLUG_CATEGORIES entry wins.
+ *  2. Otherwise, if the slug is a sub-item in the category tree, use its
+ *     umbrella's categories and narrow by the sub-item's own words — so
+ *     "sneakers" means footwear whose name/tags mention a sneaker.
+ *  3. If nothing resolves, return null so the caller can say "nothing here"
+ *     rather than silently showing everything.
+ */
+export function resolveCategorySlug(
+  slug: string
+): { categories: string[] | null; keywords: string[] | null } | null {
+  const exact = SLUG_CATEGORIES[slug];
+  if (exact) return { categories: exact, keywords: null };
+
+  const umbrella = UMBRELLA_CATEGORIES.find(
+    (u) => u.primarySlug === slug || u.groups.some((g) => g.items.some((i) => i.slug === slug))
+  );
+  if (!umbrella) return null;
+
+  const umbrellaCategories = SLUG_CATEGORIES[umbrella.primarySlug] ?? null;
+
+  // Clicking the umbrella itself: everything under it, no keyword narrowing.
+  if (umbrella.primarySlug === slug) {
+    if (umbrellaCategories) return { categories: umbrellaCategories, keywords: null };
+    // Umbrella with no inventory mapping — fall back to its own label.
+    return { categories: null, keywords: labelKeywords(umbrella.label) };
+  }
+
+  const item = umbrella.groups.flatMap((g) => g.items).find((i) => i.slug === slug);
+  if (!item) return null;
+
+  return { categories: umbrellaCategories, keywords: labelKeywords(item.label) };
+}
+
+/**
+ * Words worth matching from a category label. Drops the noise ("and", "&")
+ * and any parenthetical qualifier like "(Wholesale)", and singularises the
+ * obvious plural so "Sneakers" also matches "sneaker".
+ */
+function labelKeywords(label: string): string[] {
+  const cleaned = label.replace(/\([^)]*\)/g, " ");
+  const words = cleaned
+    .split(/[\s&/,]+/)
+    .map((w) => w.trim().toLowerCase())
+    .filter((w) => w.length > 2 && !["and", "the", "for", "with"].includes(w));
+
+  const out = new Set<string>();
+  for (const w of words) out.add(w.endsWith("s") ? w.slice(0, -1) : w);
+  return Array.from(out);
+}
 
 function itemToProduct(item: InventoryItem): Product {
   const rawImages: string[] = item.images ? JSON.parse(item.images) : [];
@@ -116,15 +175,32 @@ export async function getProducts(
     maxPrice,
   } = opts;
 
-  const categoryFilter = category
-    ? (SLUG_CATEGORIES[category] ?? null)
-    : null;
+  const resolved = category ? resolveCategorySlug(category) : null;
+
+  // A category was asked for but means nothing to us. Returning an empty set
+  // is honest; the old behaviour fell through to "no filter" and listed the
+  // whole catalogue as though it were all sneakers.
+  if (category && !resolved) {
+    return { products: [], total: 0, skip, limit };
+  }
 
   // Collected under AND so the search clause and the price clause can each
   // carry their own OR without one overwriting the other.
   const clauses: Prisma.InventoryItemWhereInput[] = [];
 
-  if (categoryFilter) clauses.push({ category: { in: categoryFilter } });
+  if (resolved?.categories) clauses.push({ category: { in: resolved.categories } });
+
+  // A sub-category like "sneakers" has no inventory category of its own, so
+  // narrow its umbrella's products by the sub-category's own words.
+  if (resolved?.keywords?.length) {
+    clauses.push({
+      OR: resolved.keywords.flatMap((k) => [
+        { name: { contains: k, mode: "insensitive" as const } },
+        { tags: { contains: k, mode: "insensitive" as const } },
+        { description: { contains: k, mode: "insensitive" as const } },
+      ]),
+    });
+  }
 
   if (q) {
     clauses.push({
