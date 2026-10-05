@@ -5,6 +5,58 @@ import { SHIPPING_SPEEDS } from "@/lib/dates";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
+/**
+ * Render the assistant's markdown links and bold as React nodes.
+ *
+ * Built as elements rather than injected HTML — this text comes from a model
+ * and must never be able to introduce markup. Only same-site paths and https
+ * URLs are turned into links; anything else (javascript:, data:, ...) is left
+ * as plain text.
+ */
+function renderRich(text: string): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  // [label](href) or **bold**
+  const pattern = /\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let key = 0;
+
+  while ((m = pattern.exec(text)) !== null) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+
+    if (m[1] !== undefined && m[2] !== undefined) {
+      const href = m[2];
+      const safe = href.startsWith("/") || href.startsWith("https://");
+      out.push(
+        safe ? (
+          <a
+            key={key++}
+            href={href}
+            {...(href.startsWith("https://")
+              ? { target: "_blank", rel: "noopener noreferrer" }
+              : {})}
+            className="font-semibold underline underline-offset-2 text-[color:var(--brand-navy)] hover:text-[color:var(--brand-clay)]"
+          >
+            {m[1]}
+          </a>
+        ) : (
+          m[1]
+        )
+      );
+    } else if (m[3] !== undefined) {
+      out.push(
+        <strong key={key++} className="font-semibold">
+          {m[3]}
+        </strong>
+      );
+    }
+    last = pattern.lastIndex;
+  }
+
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
 const SUGGESTIONS = [
   "How long will my order take?",
   "Do you have air fryers?",
@@ -127,7 +179,7 @@ export default function AssistantChat() {
                       : "bg-white border border-[color:var(--border)] text-[color:var(--brand-navy)] rounded-bl-sm"
                   }`}
                 >
-                  {m.content}
+                  {m.role === "assistant" ? renderRich(m.content) : m.content}
                 </div>
               </div>
             ))}
