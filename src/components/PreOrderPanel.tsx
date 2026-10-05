@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { formatPrice, discountedPrice, type Product } from "@/lib/products";
-import { formatEtaDate, PREORDER_LEAD_WORKING_DAYS } from "@/lib/dates";
+import {
+  addWorkingDays,
+  formatEtaDate,
+  PREORDER_LEAD_WORKING_DAYS,
+  SHIPPING_SPEEDS,
+  SHIPPING_SPEED_KEYS,
+  type ShippingSpeed,
+} from "@/lib/dates";
 
 function formatEta(iso?: string | null): string | null {
   if (!iso) return null;
@@ -29,6 +36,7 @@ export default function PreOrderPanel({
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mobile-money");
+  const [shippingMethod, setShippingMethod] = useState<ShippingSpeed>("sea");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -52,6 +60,7 @@ export default function PreOrderPanel({
           itemId: String(product.id),
           quantity: qty,
           paymentMethod,
+          shippingMethod,
           customerName: name.trim(),
           customerEmail: email.trim(),
           customerPhone: phone.trim() || undefined,
@@ -213,6 +222,51 @@ export default function PreOrderPanel({
                       Total due now <strong className="text-[color:var(--brand-navy)]">{formatPrice(price * qty)}</strong>
                     </div>
                   </div>
+                </div>
+
+                {/* Shipping speed — drives the promised arrival date, so it
+                    is deliberately the loudest control in this form. */}
+                <div>
+                  <span className="block text-sm font-semibold mb-1.5">
+                    How should we ship it?
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {SHIPPING_SPEED_KEYS.map((key) => {
+                      const opt = SHIPPING_SPEEDS[key];
+                      const active = shippingMethod === key;
+                      return (
+                        <button
+                          type="button"
+                          key={key}
+                          onClick={() => setShippingMethod(key)}
+                          aria-pressed={active}
+                          className={`text-left px-3 py-3 rounded-lg border-2 transition ${
+                            active
+                              ? "border-[color:var(--brand-navy)] bg-[color:var(--brand-cream)]"
+                              : "border-[color:var(--border)] hover:border-[color:var(--brand-navy)]"
+                          }`}
+                        >
+                          <span className="block text-sm font-bold text-[color:var(--brand-navy)]">
+                            {opt.label}
+                          </span>
+                          <span className="block text-base font-extrabold text-[color:var(--brand-clay)] leading-tight">
+                            {opt.short}
+                          </span>
+                          <span className="block text-[11px] text-[color:var(--muted)] mt-0.5 leading-snug">
+                            {opt.blurb}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-xs text-[color:var(--muted)]">
+                    Counted in business days from the day full payment clears. Arriving
+                    about{" "}
+                    <strong className="text-[color:var(--brand-navy)]">
+                      {formatEtaDate(addWorkingDays(new Date(), SHIPPING_SPEEDS[shippingMethod].workingDays))}
+                    </strong>
+                    .
+                  </p>
                 </div>
 
                 {/* Payment method */}

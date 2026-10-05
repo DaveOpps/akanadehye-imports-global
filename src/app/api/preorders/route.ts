@@ -4,7 +4,14 @@ import { prisma } from "@/lib/db";
 import { auth } from "@/auth";
 import { hit } from "@/lib/rateLimit";
 import { sendOrderNotification } from "@/lib/notify";
-import { addWorkingDays, formatEtaDate, PREORDER_LEAD_WORKING_DAYS } from "@/lib/dates";
+import {
+  addWorkingDays,
+  formatEtaDate,
+  leadWorkingDays,
+  SHIPPING_SPEEDS,
+  SHIPPING_SPEED_KEYS,
+  type ShippingSpeed,
+} from "@/lib/dates";
 
 const PAYMENT_METHODS = ["mobile-money", "card", "bank-transfer"] as const;
 const PAYMENT_LABELS: Record<(typeof PAYMENT_METHODS)[number], string> = {
@@ -17,6 +24,9 @@ const createSchema = z.object({
   itemId: z.string().min(1),
   quantity: z.number().int().min(1).max(999).default(1),
   paymentMethod: z.enum(PAYMENT_METHODS),
+  shippingMethod: z
+    .enum(SHIPPING_SPEED_KEYS as [ShippingSpeed, ...ShippingSpeed[]])
+    .default("sea"),
   customerName: z.string().min(1).max(120),
   customerEmail: z.string().email().max(200),
   customerPhone: z.string().max(40).optional(),
@@ -57,7 +67,7 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const { itemId, quantity, paymentMethod, customerName, customerEmail, customerPhone, note } = parsed.data;
+  const { itemId, quantity, paymentMethod, shippingMethod, customerName, customerEmail, customerPhone, note } = parsed.data;
 
   // Snapshot price/name from the DB — never trust the client for these.
   const item = await prisma.inventoryItem.findUnique({ where: { id: itemId } });
@@ -71,9 +81,11 @@ export async function POST(req: NextRequest) {
   const unitPrice = item.salePrice ?? item.price;
   const total = unitPrice * quantity;
 
-  // Every pre-order gets a concrete promised date: the admin's own ETA if set,
-  // otherwise our standard lead time counted from today.
-  const expectedArrival = item.expectedArrival ?? addWorkingDays(new Date(), PREORDER_LEAD_WORKING_DAYS);
+  // Every pre-order gets a concrete promised date. The admin's own ETA on the
+  // item wins when set; otherwise it follows the shipping speed the customer
+  // chose — air is 5 working days, sea is 45.
+  const expectedArrival =
+    item.expectedArrival ?? addWorkingDays(new Date(), leadWorkingDays(shippingMethod));
 
   const baseData = {
     itemId: item.id,
@@ -87,6 +99,7 @@ export async function POST(req: NextRequest) {
     customerPhone: customerPhone || null,
     note: note || null,
     paymentMethod,
+    shippingMethod,
     paymentStatus: "awaiting_payment",
   };
 
@@ -107,7 +120,7 @@ export async function POST(req: NextRequest) {
     email: customerEmail,
     customerName,
     title: `Pre-order received — ${created.number}`,
-    body: `Thanks ${customerName}! Your pre-order for ${quantity} × ${item.name} is reserved. Full payment of GHS ${total.toFixed(2)} via ${PAYMENT_LABELS[paymentMethod]} is required to secure it — our team will contact you shortly with payment details. Pre-orders take up to ${PREORDER_LEAD_WORKING_DAYS} working days — expected around ${formatEtaDate(expectedArrival)}. Quote reference ${created.number} when you pay.`,
+    body: `Thanks ${customerName}! Your pre-order for ${quantity} × ${item.name} is reserved. Full payment of GHS ${total.toFixed(2)} via ${PAYMENT_LABELS[paymentMethod]} is required to secure it — our team will contact you shortly with payment details. ${SHIPPING_SPEEDS[shippingMethod].label} takes ${SHIPPING_SPEEDS[shippingMethod].short} — expected around ${formatEtaDate(expectedArrival)}. Quote reference ${created.number} when you pay.`,
     orderNumber: created.number,
   }).catch(() => {});
 
@@ -120,6 +133,7 @@ export async function POST(req: NextRequest) {
       unitPrice: created.unitPrice,
       total,
       expectedArrival: created.expectedArrival,
+      shippingMethod: created.shippingMethod,
       paymentMethod: created.paymentMethod,
       paymentStatus: created.paymentStatus,
     },

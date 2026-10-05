@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { getProducts } from "@/lib/shop-products";
-import { PREORDER_LEAD_WORKING_DAYS } from "@/lib/dates";
+import { SHIPPING_SPEEDS } from "@/lib/dates";
 import { UMBRELLA_CATEGORIES } from "@/lib/storefront-categories";
 import CategoryRail from "@/components/CategoryRail";
 import PromoStrip from "@/components/PromoStrip";
@@ -84,10 +84,27 @@ export default async function Home() {
           </h1>
           <p className="mt-5 text-base md:text-lg text-white/90 max-w-2xl mx-auto leading-relaxed">
             Akanadehye is an <strong className="font-semibold text-white">importing service, not a walk-in shop</strong>.
-            You reserve what you need, we source and ship it in — typically within{" "}
-            {PREORDER_LEAD_WORKING_DAYS} working days.
+            You reserve what you need, we source and ship it in.
           </p>
-          <p className="mt-3 text-sm text-white/75 max-w-2xl mx-auto">
+          {/* The two lead times are the single most misunderstood thing about
+              this business, so they are stated in the hero itself rather than
+              being discovered at checkout. */}
+          <div className="mt-6 flex flex-wrap gap-3 justify-center">
+            {(["air", "sea"] as const).map((k) => (
+              <div
+                key={k}
+                className="rounded-xl bg-white/10 border border-white/25 backdrop-blur px-5 py-3 text-left"
+              >
+                <div className="text-xs uppercase tracking-wider text-white/70 font-semibold">
+                  {SHIPPING_SPEEDS[k].label}
+                </div>
+                <div className="text-xl font-extrabold text-[color:var(--brand-gold)] leading-tight">
+                  {SHIPPING_SPEEDS[k].short}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-sm text-white/75 max-w-2xl mx-auto">
             Some items are already in stock and ship immediately. Everything else is pre-order.
           </p>
           <div className="mt-7 flex flex-wrap gap-3 justify-center">
@@ -134,7 +151,7 @@ export default async function Home() {
               {
                 n: "3",
                 title: "Collect or get it delivered",
-                body: `Typically ${PREORDER_LEAD_WORKING_DAYS} working days from payment. We contact you the moment it lands.`,
+                body: `${SHIPPING_SPEEDS.air.short} by air, ${SHIPPING_SPEEDS.sea.short} by sea — counted from the day payment clears. We contact you the moment it lands.`,
               },
             ].map((step) => (
               <li

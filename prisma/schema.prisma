@@ -171,6 +171,10 @@ model PreOrder {
   unitPrice       Float
   expectedArrival DateTime?
 
+  // "air" (5 working days) | "sea" (45). Defaults to sea because that was the
+  // only option before air freight was offered, so existing rows are sea.
+  shippingMethod  String   @default("sea")
+
   // Customer contact captured at reservation.
   customerName  String
   customerEmail String
