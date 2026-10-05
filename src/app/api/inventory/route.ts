@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { requireStaff } from "@/lib/requireStaff";
 
 // GET /api/inventory?q=&category=&limit=&userId=
 // Public read — used by bot brain to show merchant products.
@@ -62,6 +63,9 @@ export async function GET(req: NextRequest) {
 
 // POST /api/inventory  — create a new inventory item
 export async function POST(req: NextRequest) {
+  const denied = await requireStaff();
+  if (denied) return denied;
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();

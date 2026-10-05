@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
+import { requireStaff } from "@/lib/requireStaff";
 
 // GET /api/inventory/:id — fetch a single item with full base64 images (used by edit form)
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -33,6 +34,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 // PATCH /api/inventory/:id — update fields on an inventory item
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireStaff();
+  if (denied) return denied;
+
   const { id } = await params;
   let body: Record<string, unknown>;
   try {
@@ -102,6 +106,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 // DELETE /api/inventory/:id
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireStaff();
+  if (denied) return denied;
+
   const { id } = await params;
   try {
     const current = await prisma.inventoryItem.findUnique({ where: { id } });
