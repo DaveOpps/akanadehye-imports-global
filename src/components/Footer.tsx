@@ -12,8 +12,8 @@ export default function Footer() {
             <span className="font-bold text-lg tracking-tight">Akanadehye</span>
           </div>
           <p className="mt-4 text-sm text-white/70 leading-relaxed">
-            One platform for everything you need. Discover, compare, and buy
-            across electronics, fashion, beauty, and more.
+            An importing service, not a walk-in shop. Reserve what you need and
+            we source and ship it in — 5 business days by air, 45 by sea.
           </p>
         </div>
 

@@ -15,25 +15,37 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://akanadehye.com"),
+  // This is the text WhatsApp, Facebook and search results show — for most
+  // people it is the first thing they read about the business, so it has to
+  // say "import/pre-order service", not "shop".
   title: {
-    default: "Akanadehye — One Platform. Everything You Need to Shop.",
-    template: "%s · Akanadehye",
+    default: "Akanadehye Imports — Pre-Order Import Service",
+    template: "%s · Akanadehye Imports",
   },
   description:
-    "Discover, compare, and buy across electronics, fashion, beauty, and more — all in one place. Built for shoppers across Ghana and the diaspora.",
-  keywords: ["ecommerce Ghana", "online shopping Africa", "Akanadehye", "Mobile Money", "diaspora shopping"],
+    "We import to order for Ghana and the diaspora. Reserve what you need and we source and ship it in — 5 business days by air, 45 by sea.",
+  keywords: [
+    "import service Ghana",
+    "pre-order imports Ghana",
+    "sourcing agent Ghana",
+    "air freight Ghana",
+    "sea freight Ghana",
+    "Akanadehye",
+    "Mobile Money",
+  ],
   openGraph: {
     type: "website",
-    siteName: "Akanadehye",
-    title: "Akanadehye — One Platform. Everything You Need to Shop.",
+    siteName: "Akanadehye Imports",
+    title: "Akanadehye Imports — Pre-Order Import Service",
     description:
-      "Discover, compare, and buy across electronics, fashion, beauty, and more — all in one place.",
+      "An importing service, not a walk-in shop. Reserve it, we ship it in — 5 business days by air, 45 by sea.",
     locale: "en_GH",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Akanadehye — One Platform. Everything You Need to Shop.",
-    description: "Discover, compare, and buy across every category — all in one place.",
+    title: "Akanadehye Imports — Pre-Order Import Service",
+    description:
+      "An importing service, not a walk-in shop. Reserve it, we ship it in — 5 business days by air, 45 by sea.",
   },
 };
 
