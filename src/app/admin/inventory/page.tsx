@@ -176,6 +176,16 @@ export default function InventoryPage() {
     for (const id of selected) remove(id);
     setSelected(new Set());
   }
+  /**
+   * Flip the storefront between a red Pre-order tag and an In stock label.
+   * Doing this one product at a time through the edit drawer is unworkable
+   * across a catalogue this size, so it is available in bulk and per row.
+   */
+  function bulkSetStocked(stockedLocally: boolean) {
+    if (selected.size === 0) return;
+    for (const id of selected) update(id, { stockedLocally });
+    setSelected(new Set());
+  }
   function clearFilters() {
     setSearch("");
     setCategoryFilter("All");
@@ -434,6 +444,20 @@ export default function InventoryPage() {
                   Clear
                 </button>
                 <button
+                  onClick={() => bulkSetStocked(true)}
+                  title="Storefront shows these as held in stock, shipping now"
+                  className="text-xs font-bold bg-[color:var(--brand-green)] hover:brightness-110 px-3 py-1.5 rounded transition"
+                >
+                  Mark in stock
+                </button>
+                <button
+                  onClick={() => bulkSetStocked(false)}
+                  title="Storefront shows these with a red Pre-order tag"
+                  className="text-xs font-bold bg-[#dc2626] hover:brightness-110 px-3 py-1.5 rounded transition"
+                >
+                  Mark pre-order
+                </button>
+                <button
                   onClick={bulkDelete}
                   className="text-xs font-bold bg-[color:var(--brand-clay)] hover:brightness-110 px-3 py-1.5 rounded transition"
                 >
@@ -504,18 +528,30 @@ export default function InventoryPage() {
                         <td className="px-3 py-3 min-w-56">
                           <div className="flex items-center gap-1.5">
                             <div className="font-medium">{i.name}</div>
-                            {i.preorderable && (
-                              <span
-                                title="Customers can pre-order this item"
-                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[color:var(--brand-navy)] text-[color:var(--brand-gold)] shrink-0"
-                              >
-                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" aria-hidden>
-                                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-                                  <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                                Pre-order
-                              </span>
-                            )}
+                            {/* Click to flip how the storefront presents this
+                                item. Shows the current state, not an action,
+                                so the list doubles as an at-a-glance audit of
+                                what customers are seeing. */}
+                            <button
+                              type="button"
+                              onClick={() => update(i.id, { stockedLocally: !i.stockedLocally })}
+                              title={
+                                i.stockedLocally
+                                  ? "Held in stock — click to switch to pre-order"
+                                  : "Pre-order — click to mark as held in stock"
+                              }
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide shrink-0 transition hover:brightness-110 ${
+                                i.stockedLocally
+                                  ? "bg-[color:var(--brand-green)] text-white"
+                                  : "bg-[#dc2626] text-white"
+                              }`}
+                            >
+                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" aria-hidden>
+                                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+                                <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              {i.stockedLocally ? "In stock" : "Pre-order"}
+                            </button>
                           </div>
                           <div className="text-[10px] text-[color:var(--muted)] font-mono mt-0.5">
                             {i.sku}
