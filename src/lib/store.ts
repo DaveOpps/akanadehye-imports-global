@@ -39,6 +39,9 @@ export type InventoryItem = {
   tags?: string[];
   /** When true, customers can reserve this item (pay on arrival) even if out of stock. */
   preorderable?: boolean;
+  /** True when we physically hold this and it ships at once. Off means the
+   *  storefront treats it as an import pre-order, which is the default. */
+  stockedLocally?: boolean;
   /** Optional expected arrival date (ISO string) shown on the pre-order form. */
   expectedArrival?: string | null;
 };

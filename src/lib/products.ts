@@ -27,6 +27,9 @@ export type Product = {
   availabilityStatus?: string;
   minimumOrderQuantity?: number;
   preorderable?: boolean;
+  /** True when stock is physically held here and ships at once. Everything
+   *  else is imported to order, which is the common case. */
+  stockedLocally?: boolean;
   expectedArrival?: string | null; // ISO date string, or null
 };
 
@@ -53,4 +56,13 @@ export function formatPrice(value: number): string {
     currency: "GHS",
     minimumFractionDigits: 2,
   }).format(value);
+}
+
+/**
+ * Akanadehye imports to order, so a product is a pre-order unless staff have
+ * marked it as physically held here. Centralised so the card, the rail and
+ * the product page all agree on what counts as "in stock".
+ */
+export function isPreOrder(p: Pick<Product, "stockedLocally">): boolean {
+  return !p.stockedLocally;
 }

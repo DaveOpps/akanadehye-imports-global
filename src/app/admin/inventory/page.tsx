@@ -1057,6 +1057,7 @@ function ProductForm({
   const [description, setDescription] = useState(initial?.description ?? "");
   const [tagsInput, setTagsInput] = useState((initial?.tags ?? []).join(", "));
   const [preorderable, setPreorderable] = useState(initial?.preorderable ?? false);
+  const [stockedLocally, setStockedLocally] = useState(initial?.stockedLocally ?? false);
   const [expectedArrival, setExpectedArrival] = useState(
     initial?.expectedArrival ? new Date(initial.expectedArrival).toISOString().slice(0, 10) : ""
   );
@@ -1103,6 +1104,7 @@ function ProductForm({
           ? tagsInput.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean)
           : undefined,
       preorderable,
+      stockedLocally,
       expectedArrival:
         preorderable && expectedArrival ? new Date(expectedArrival).toISOString() : null,
     });
@@ -1289,6 +1291,39 @@ function ProductForm({
             className="input"
           />
         </Field>
+      </section>
+
+      {/* Held in stock — the exception. Everything is treated as a pre-order
+          unless this is on, so the storefront shows a red Pre-order tag by
+          default and only drops it for items we physically have. */}
+      <section className="rounded-xl border-2 border-[#dc2626]/30 bg-white p-4">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={stockedLocally}
+            onClick={() => setStockedLocally((v) => !v)}
+            className={`mt-0.5 relative inline-flex h-6 w-11 shrink-0 rounded-full transition ${
+              stockedLocally ? "bg-[color:var(--brand-green)]" : "bg-[color:var(--border)]"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
+                stockedLocally ? "translate-x-5" : "translate-x-0.5"
+              }`}
+            />
+          </button>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-[color:var(--brand-navy)]">
+              We hold this in stock
+            </span>
+            <span className="block text-xs text-[color:var(--muted)] mt-0.5 leading-snug">
+              Off by default — the item shows a red <strong>Pre-order</strong> tag with the
+              import lead time. Turn on only for stock physically here that ships
+              immediately; the tag is dropped and the stock count shown instead.
+            </span>
+          </span>
+        </label>
       </section>
 
       {/* Pre-order */}

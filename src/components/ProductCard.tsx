@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCart } from "./CartContext";
-import { formatPrice, type Product } from "@/lib/products";
+import { formatPrice, isPreOrder, type Product } from "@/lib/products";
+import PreOrderBadge, { preorderLeadLabel } from "./PreOrderBadge";
 
 export default function ProductCard({ product }: { product: Product }) {
   const { add } = useCart();
@@ -40,13 +41,9 @@ export default function ProductCard({ product }: { product: Product }) {
           </span>
         )}
         {/* Pre-order sign — reserve now, pay on arrival */}
-        {product.preorderable && (
-          <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-[color:var(--brand-navy)] text-[color:var(--brand-gold)] text-[10px] font-bold uppercase tracking-wide leading-none shadow">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-              <path d="M12 7v5l3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Pre-order
+        {isPreOrder(product) && (
+          <span className="absolute top-3 right-3">
+            <PreOrderBadge />
           </span>
         )}
       </Link>
@@ -71,10 +68,14 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="flex items-center gap-1 text-xs text-[color:var(--muted)]">
           <span className="text-[color:var(--brand-gold)]">★</span>
           <span className="font-medium text-[color:var(--brand-navy)]">{product.rating.toFixed(1)}</span>
-          {product.stock > 0 ? (
-            <span>· {product.stock} in stock</span>
-          ) : product.preorderable ? (
-            <span className="text-[color:var(--brand-navy)] font-semibold">· Pre-order — ~45 working days</span>
+          {/* Pre-order is checked first: an imported item is a pre-order
+              whatever the stock figure says, and showing "N in stock" next to
+              a red Pre-order tag is the contradiction customers complain
+              about. */}
+          {isPreOrder(product) ? (
+            <span className="text-[#dc2626] font-semibold">· Pre-order · {preorderLeadLabel()}</span>
+          ) : product.stock > 0 ? (
+            <span>· {product.stock} in stock, ships now</span>
           ) : (
             <span className="text-[color:var(--brand-clay)]">· Out of stock</span>
           )}

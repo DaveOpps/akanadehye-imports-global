@@ -69,6 +69,11 @@ model InventoryItem {
   tags        String?  // JSON-encoded String[]
   preorderable    Boolean   @default(false)  // admin toggle: allow reservations even when out of stock
   expectedArrival DateTime?                   // optional ETA shown to customers on the pre-order form
+
+  // The business imports to order, so a product is treated as pre-order unless
+  // staff tick this to say the stock is physically held here and ships at once.
+  // Default false => pre-order, which is the common case.
+  stockedLocally  Boolean   @default(false)
   updatedAt   DateTime @updatedAt
 
   @@unique([userId, sku])

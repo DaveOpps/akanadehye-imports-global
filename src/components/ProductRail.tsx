@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import { discountedPrice, formatPrice, type Product } from "@/lib/products";
+import { discountedPrice, formatPrice, isPreOrder, type Product } from "@/lib/products";
+import PreOrderBadge, { preorderLeadLabel } from "./PreOrderBadge";
 
 export default function ProductRail({
   title,
@@ -61,9 +62,9 @@ export default function ProductRail({
                     -{Math.round(p.discountPercentage)}%
                   </span>
                 )}
-                {p.preorderable && (
-                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-[color:var(--brand-navy)] text-[color:var(--brand-gold)] text-[10px] font-bold uppercase tracking-wide">
-                    Pre-order
+                {isPreOrder(p) && (
+                  <span className="absolute top-2 right-2">
+                    <PreOrderBadge size="sm" />
                   </span>
                 )}
               </div>
@@ -80,9 +81,11 @@ export default function ProductRail({
               )}
               <div className="text-[10px] mt-1 text-[color:var(--muted)]">
                 <span className="text-[color:var(--brand-gold)]">★</span> {p.rating.toFixed(1)} ·{" "}
-                {p.stock > 0 ? `${p.stock} left` : p.preorderable ? (
-                  <span className="text-[color:var(--brand-navy)] font-semibold">pre-order · ~45 days</span>
-                ) : "out of stock"}
+                {isPreOrder(p) ? (
+                  <span className="text-[#dc2626] font-semibold">
+                    pre-order · {preorderLeadLabel()}
+                  </span>
+                ) : p.stock > 0 ? `${p.stock} left` : "out of stock"}
               </div>
             </Link>
           );

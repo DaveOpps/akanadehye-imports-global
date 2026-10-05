@@ -87,6 +87,7 @@ function itemToProduct(item: InventoryItem): Product {
     reviews: [],
     availabilityStatus: item.stock > 0 ? "In Stock" : "Out of Stock",
     preorderable: item.preorderable,
+    stockedLocally: item.stockedLocally,
     expectedArrival: item.expectedArrival ? item.expectedArrival.toISOString() : null,
   };
 }

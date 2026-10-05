@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
       reorderAt: i.reorderAt,
       description: i.description,
       preorderable: i.preorderable,
+      stockedLocally: i.stockedLocally,
       expectedArrival: i.expectedArrival,
       tags: i.tags ? (JSON.parse(i.tags) as string[]) : [],
       // Return thumbnail URL only (not full base64) to keep the list response small.
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
     images,
     tags,
     preorderable,
+    stockedLocally,
     expectedArrival,
   } = body as Record<string, unknown>;
 
@@ -107,6 +109,7 @@ export async function POST(req: NextRequest) {
         images: images ? JSON.stringify(images) : null,
         tags: tags ? JSON.stringify(tags) : null,
         preorderable: Boolean(preorderable),
+        stockedLocally: Boolean(stockedLocally),
         expectedArrival: expectedArrival ? new Date(String(expectedArrival)) : null,
       },
     });
